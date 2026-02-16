@@ -1,11 +1,11 @@
 dart_swagger_to_models
 ======================
 
-Генератор Dart-моделей по Swagger/OpenAPI спецификациям (JSON/YAML).
+CLI tool for generating **null-safe Dart models** from **Swagger / OpenAPI** specifications (JSON/YAML).
 
-### Установка
+### Installation
 
-- **Локально в проект** (как dev-зависимость, пример):
+- **Local in a project** (as a dev dependency, example):
 
 ```yaml
 dev_dependencies:
@@ -13,15 +13,15 @@ dev_dependencies:
     path: ./tools/dart_swagger_to_models
 ```
 
-### Использование
+### Usage
 
-- **Базовый пример (`plain_dart`)**:
+- **Basic example (`plain_dart`)**:
 
 ```bash
 dart run dart_swagger_to_models:dart_swagger_to_models --input api.yaml
 ```
 
-- **С указанием директории, имени библиотеки и стиля**:
+- **With custom output directory, library name and style**:
 
 ```bash
 dart run dart_swagger_to_models:dart_swagger_to_models \
@@ -31,34 +31,33 @@ dart run dart_swagger_to_models:dart_swagger_to_models \
   --style json_serializable
 ```
 
-Поддерживаются Swagger 2.0 (`swagger`) и OpenAPI 3 (`openapi`).
-Из секций `definitions` / `components.schemas` генерируются Dart-классы
-с `fromJson` / `toJson` и null-safety полями.
+The tool supports **Swagger 2.0** (`swagger`) and **OpenAPI 3** (`openapi`).
+Models are generated from `definitions` / `components.schemas` with
+`fromJson` / `toJson` and full **null-safety**.
 
-### Аргументы CLI
+### CLI arguments
 
-- **`--input`, `-i`**: путь к Swagger/OpenAPI спецификации (файл или URL) — **обязательный**.
-- **`--output-dir`, `-o`**: директория для сохранения моделей (по умолчанию `lib/models`).
-- **`--library-name`, `-l`**: имя библиотеки/файла без расширения (по умолчанию `models`, исторический параметр).
-- **`--style`, `-s`**: стиль генерации моделей:
-  - `plain_dart` — простые Dart классы с ручным `fromJson`/`toJson` (по умолчанию),
-  - `json_serializable` — классы с `@JsonSerializable()` и делегацией в `_$ClassFromJson`/`_$ClassToJson`,
-  - `freezed` — иммутабельные классы `@freezed` с `const factory` и `fromJson`.
-- **`--project-dir`**: корневая директория проекта для сканирования Dart файлов (поиск существующих файлов моделей, по умолчанию `.`).
-- **`--endpoint`**: URL endpoint'а для маркера `/*SWAGGER-TO-DART:{endpoint}*/`. Если указан — перегенерируются только файлы с таким маркером, если нет — генерируются/обновляются все модели.
-- **`--help`, `-h`**: показать помощь.
+- **`--input`, `-i`**: path to Swagger/OpenAPI specification (file or URL) — **required**.
+- **`--output-dir`, `-o`**: directory where models will be written (default: `lib/models`).
+- **`--library-name`, `-l`**: library/file name without extension (default: `models`, historical parameter).
+- **`--style`, `-s`**: model generation style:
+  - `plain_dart` — plain Dart classes with manual `fromJson`/`toJson` (default),
+  - `json_serializable` — classes with `@JsonSerializable()` and delegation to `_$ClassFromJson` / `_$ClassToJson`,
+  - `freezed` — immutable `@freezed` classes with `const factory` and `fromJson`.
+- **`--project-dir`**: project root directory for scanning Dart files (searching for existing model files, default: `.`).
+- **`--endpoint`**: endpoint URL for the marker `/*SWAGGER-TO-DART:{endpoint}*/`.  
+  If provided, only files with this marker are regenerated;  
+  if omitted, all models are generated/updated.
+- **`--help`, `-h`**: show help.
 
-### Пример результата
+### Example
 
-Для определения:
+For the schema:
 
 ```yaml
 definitions:
   User:
     type: object
-    required:
-      - id
-      - name
     properties:
       id:
         type: integer
@@ -68,12 +67,18 @@ definitions:
         type: string
 ```
 
-будет сгенерирован Dart-класс `User` с обязательными полями `id`, `name`
-и опциональным `email`, а также методами `fromJson` и `toJson`.
+the generator will produce a Dart class `User` with **required** fields `id`, `name`
+and **nullable** field `email`, plus `fromJson` and `toJson` methods.
 
-### Режим per-file (одна модель = один файл)
+> Nullability rule used by the generator:
+> - If a field is present in the schema `properties`, it is **required by default**.
+> - If a field has `nullable: true`, it is generated as nullable (`Type?`).
 
-Генератор **всегда** работает в режиме «одна модель = один файл». Для каждой схемы из Swagger/OpenAPI создаётся отдельный Dart-файл (например, `user.dart`, `order.dart`).
+### Per-file mode (one model = one file)
+
+The generator **always** works in "one model = one file" mode.
+For each schema from Swagger/OpenAPI a separate Dart file is created
+(for example, `user.dart`, `order.dart`).
 
 ```bash
 dart run dart_swagger_to_models:dart_swagger_to_models \
@@ -83,47 +88,61 @@ dart run dart_swagger_to_models:dart_swagger_to_models \
   --project-dir .
 ```
 
-**Особенности режима:**
+**Key points:**
 
-- **Одна модель = один файл**: каждая схема из Swagger/OpenAPI генерируется в отдельный файл (например, `user.dart`, `order.dart`).
-- **Маркеры для идентификации**: каждый файл начинается с маркера `/*SWAGGER-TO-DART:{endpoint}*/`, где `{endpoint}` — URL endpoint'а, переданный через `--endpoint`.
-- **Интеграция с существующим кодом**: генератор сканирует проект (`--project-dir`) и обновляет существующие файлы с соответствующими маркерами.
-- **Сохранение кастомного кода**: содержимое между маркерами `/*SWAGGER-TO-DART: Fields start*/` и `/*SWAGGER-TO-DART: Fields stop*/` заменяется, всё остальное сохраняется (импорты, методы, расширения и т.д.).
+- **One model = one file**: each schema becomes its own Dart file
+  (e.g. `user.dart`, `order.dart`).
+- **Markers for identification**: each file starts with a marker
+  `/*SWAGGER-TO-DART:{endpoint}*/`, where `{endpoint}` is the endpoint URL
+  passed via `--endpoint`.
+- **Integration with existing code**: the generator scans the project
+  (`--project-dir`) and updates existing files that contain such markers.
+- **Preserving custom code**: only the contents between markers
+  `/*SWAGGER-TO-DART: Fields start*/` and
+  `/*SWAGGER-TO-DART: Fields stop*/` are replaced;
+  everything else (imports, methods, extensions, etc.) is preserved.
 
-Если указать `--endpoint`, будут обновлены только файлы с маркером, содержащим этот URL. Это удобно для выборочной перегенерации моделей для конкретного endpoint'а.
+If you pass `--endpoint`, only files whose marker contains this URL
+will be updated. This is convenient for **selective regeneration** of models
+for a specific endpoint.
 
-**Пример существующего файла:**
+**Example of an existing file:**
 
 ```dart
 /*SWAGGER-TO-DART:api.example.com*/
 
 import 'package:some_package/some_package.dart';
 
-// Кастомный код до маркеров
+// Custom code before markers
 void customFunction() {
   print('Custom code');
 }
 
 /*SWAGGER-TO-DART: Fields start*/
-// Здесь будет сгенерированный класс
+// Generated class will be placed here
 class User {
   final int id;
-  final String? name;
+  final String name;
   // ...
 }
 /*SWAGGER-TO-DART: Fields stop*/
 
-// Кастомный код после маркеров
+// Custom code after markers
 extension UserExtension on User {
-  String get displayName => name ?? 'Unknown';
+  String get displayName => name;
 }
 ```
 
-При повторной генерации содержимое между маркерами будет обновлено, а кастомный код сохранён.
+On regeneration, the contents between markers will be updated, and
+all custom code will remain intact.
 
-### Ограничения и упрощения
+### Limitations and simplifications
 
-- Схемы обрабатываются на уровне верхних сущностей (`definitions` / `components.schemas`).
-- `$ref` на другие схемы разрешаются в типы Dart-классов.
-- Режим per-file поддерживает все три стиля генерации (`plain_dart`, `json_serializable`, `freezed`).
+- Only top-level schemas from `definitions` / `components.schemas` are processed.
+- `$ref` to other schemas are resolved into Dart class types.
+- Per-file mode supports all three generation styles
+  (`plain_dart`, `json_serializable`, `freezed`).
 
+---
+
+For more detailed documentation, see [`docs/`](docs/).
