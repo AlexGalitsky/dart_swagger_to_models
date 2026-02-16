@@ -303,4 +303,133 @@ void main() {
       expect(content, contains('final num? price;'));
     });
   });
+
+  group('Generation styles', () {
+    test('plain_dart (по умолчанию) генерирует ручной fromJson/toJson', () async {
+      final tempDir =
+          await Directory.systemTemp.createTemp('dart_swagger_to_models_style_plain_');
+      final specFile = File('${tempDir.path}/swagger.json');
+
+      final spec = <String, dynamic>{
+        'swagger': '2.0',
+        'info': {
+          'title': 'Test API',
+          'version': '1.0.0',
+        },
+        'paths': <String, dynamic>{},
+        'definitions': <String, dynamic>{
+          'User': {
+            'type': 'object',
+            'properties': {
+              'id': {'type': 'integer'},
+            },
+          },
+        },
+      };
+
+      await specFile.writeAsString(jsonEncode(spec));
+
+      final result = await SwaggerToDartGenerator.generateModels(
+        input: specFile.path,
+        outputDir: '${tempDir.path}/models',
+        libraryName: 'api_models',
+        style: GenerationStyle.plainDart,
+      );
+
+      final content = await File(result.generatedFiles.first).readAsString();
+      expect(content, isNot(contains('@JsonSerializable')));
+      expect(content, isNot(contains('@freezed')));
+      expect(content, contains('factory User.fromJson'));
+      expect(content, contains('Map<String, dynamic> toJson()'));
+    });
+
+    test('json_serializable генерирует @JsonSerializable и делегирует в _\$UserFromJson', () async {
+      final tempDir =
+          await Directory.systemTemp.createTemp('dart_swagger_to_models_style_json_');
+      final specFile = File('${tempDir.path}/swagger.json');
+
+      final spec = <String, dynamic>{
+        'swagger': '2.0',
+        'info': {
+          'title': 'Test API',
+          'version': '1.0.0',
+        },
+        'paths': <String, dynamic>{},
+        'definitions': <String, dynamic>{
+          'User': {
+            'type': 'object',
+            'properties': {
+              'id': {'type': 'integer'},
+            },
+          },
+        },
+      };
+
+      await specFile.writeAsString(jsonEncode(spec));
+
+      final result = await SwaggerToDartGenerator.generateModels(
+        input: specFile.path,
+        outputDir: '${tempDir.path}/models',
+        libraryName: 'api_models',
+        style: GenerationStyle.jsonSerializable,
+      );
+
+      final content = await File(result.generatedFiles.first).readAsString();
+      expect(content, contains('@JsonSerializable()'));
+      expect(
+        content,
+        contains('factory User.fromJson(Map<String, dynamic> json) => _\$UserFromJson(json);'),
+      );
+      expect(
+        content,
+        contains('Map<String, dynamic> toJson() => _\$UserToJson(this);'),
+      );
+      expect(content, contains("import 'package:json_annotation/json_annotation.dart';"));
+      expect(content, contains("part 'api_models.g.dart';"));
+    });
+
+    test('freezed генерирует @freezed и const factory', () async {
+      final tempDir =
+          await Directory.systemTemp.createTemp('dart_swagger_to_models_style_freezed_');
+      final specFile = File('${tempDir.path}/swagger.json');
+
+      final spec = <String, dynamic>{
+        'swagger': '2.0',
+        'info': {
+          'title': 'Test API',
+          'version': '1.0.0',
+        },
+        'paths': <String, dynamic>{},
+        'definitions': <String, dynamic>{
+          'User': {
+            'type': 'object',
+            'properties': {
+              'id': {'type': 'integer'},
+            },
+          },
+        },
+      };
+
+      await specFile.writeAsString(jsonEncode(spec));
+
+      final result = await SwaggerToDartGenerator.generateModels(
+        input: specFile.path,
+        outputDir: '${tempDir.path}/models',
+        libraryName: 'api_models',
+        style: GenerationStyle.freezed,
+      );
+
+      final content = await File(result.generatedFiles.first).readAsString();
+      expect(content, contains('@freezed'));
+      expect(content, contains('class User with _\$User {'));
+      expect(content, contains('const factory User({'));
+      expect(
+        content,
+        contains('factory User.fromJson(Map<String, dynamic> json) => _\$UserFromJson(json);'),
+      );
+      expect(content, contains("import 'package:freezed_annotation/freezed_annotation.dart';"));
+      expect(content, contains("part 'api_models.freezed.dart';"));
+      expect(content, contains("part 'api_models.g.dart';"));
+    });
+  });
 }

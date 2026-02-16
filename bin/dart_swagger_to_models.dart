@@ -25,6 +25,14 @@ void main(List<String> arguments) async {
       valueHelp: 'models',
       defaultsTo: 'models',
     )
+    ..addOption(
+      'style',
+      abbr: 's',
+      help: 'Стиль генерации моделей: plain_dart, json_serializable или freezed.',
+      valueHelp: 'plain_dart',
+      allowed: ['plain_dart', 'json_serializable', 'freezed'],
+      defaultsTo: 'plain_dart',
+    )
     ..addFlag(
       'help',
       abbr: 'h',
@@ -51,6 +59,13 @@ void main(List<String> arguments) async {
   final input = argResults['input'] as String?;
   final outputDir = argResults['output-dir'] as String;
   final libraryName = argResults['library-name'] as String;
+  final styleName = argResults['style'] as String;
+
+  final style = switch (styleName) {
+    'json_serializable' => GenerationStyle.jsonSerializable,
+    'freezed' => GenerationStyle.freezed,
+    _ => GenerationStyle.plainDart,
+  };
 
   if (input == null || input.isEmpty) {
     stderr.writeln('Не указан --input/-i.');
@@ -65,6 +80,7 @@ void main(List<String> arguments) async {
       input: input,
       outputDir: outputDir,
       libraryName: libraryName,
+      style: style,
     );
 
     stdout.writeln('Генерация завершена успешно.');

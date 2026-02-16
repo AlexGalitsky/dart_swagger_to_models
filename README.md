@@ -15,19 +15,20 @@ dev_dependencies:
 
 ### Использование
 
-- **Базовый пример**:
+- **Базовый пример (`plain_dart`)**:
 
 ```bash
-dart run bin/dart_swagger_to_models.dart --input api.yaml
+dart run dart_swagger_to_models:dart_swagger_to_models --input api.yaml
 ```
 
-- **С указанием директории и имени библиотеки**:
+- **С указанием директории, имени библиотеки и стиля**:
 
 ```bash
-dart run bin/dart_swagger_to_models.dart \
+dart run dart_swagger_to_models:dart_swagger_to_models \
   --input api.yaml \
   --output-dir lib/generated_models \
-  --library-name api_models
+  --library-name api_models \
+  --style json_serializable
 ```
 
 Поддерживаются Swagger 2.0 (`swagger`) и OpenAPI 3 (`openapi`).
@@ -39,6 +40,10 @@ dart run bin/dart_swagger_to_models.dart \
 - **`--input`, `-i`**: путь к Swagger/OpenAPI спецификации (файл или URL) — **обязательный**.
 - **`--output-dir`, `-o`**: директория для сохранения моделей (по умолчанию `lib/models`).
 - **`--library-name`, `-l`**: имя библиотеки/файла без расширения (по умолчанию `models`).
+- **`--style`, `-s`**: стиль генерации моделей:
+  - `plain_dart` — простые Dart классы с ручным `fromJson`/`toJson` (по умолчанию),
+  - `json_serializable` — классы с `@JsonSerializable()` и делегацией в `_$ClassFromJson`/`_$ClassToJson`,
+  - `freezed` — иммутабельные классы `@freezed` с `const factory` и `fromJson`.
 - **`--help`, `-h`**: показать помощь.
 
 ### Пример результата
