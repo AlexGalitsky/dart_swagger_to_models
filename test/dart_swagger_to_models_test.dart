@@ -46,7 +46,7 @@ void main() {
       expect(content, contains('class User'));
       expect(content, contains('final int id;'));
       expect(content, contains('final String name;'));
-      expect(content, contains('final String? email;'));
+      expect(content, contains('final String email;'));
       expect(content, contains('factory User.fromJson'));
       expect(content, contains('Map<String, dynamic> toJson()'));
     });
@@ -139,9 +139,9 @@ void main() {
       final content = await File(productFile).readAsString();
       expect(content, contains('class Product'));
       expect(content, contains('final int id;'));
-      expect(content, contains('final String? name;'));
+      expect(content, contains('final String name;'));
       expect(content, contains('final String? description;'));
-      expect(content, contains('final num? price;'));
+      expect(content, contains('final num price;'));
     });
 
     test('поддерживает allOf (OpenAPI 3)', () async {
@@ -201,11 +201,11 @@ void main() {
 
       expect(baseContent, contains('class BaseEntity'));
       expect(baseContent, contains('final int id;'));
-      expect(baseContent, contains('final DateTime? createdAt;'));
+      expect(baseContent, contains('final DateTime createdAt;'));
 
       expect(userContent, contains('class User'));
-      expect(userContent, contains('final String? name;'));
-      expect(userContent, contains('final String? email;'));
+      expect(userContent, contains('final String name;'));
+      expect(userContent, contains('final String email;'));
     });
 
     test('поддерживает массивы с вложенными типами', () async {
@@ -246,7 +246,7 @@ void main() {
       final userFile =
           result.generatedFiles.firstWhere((f) => f.contains('user.dart'));
       final content = await File(userFile).readAsString();
-      expect(content, contains('final List<String>? tags;'));
+      expect(content, contains('final List<String> tags;'));
       expect(content, contains('List<dynamic>'));
     });
 
@@ -326,8 +326,8 @@ void main() {
       final numbersFile =
           result.generatedFiles.firstWhere((f) => f.contains('numbers.dart'));
       final content = await File(numbersFile).readAsString();
-      expect(content, contains('final int? count;'));
-      expect(content, contains('final num? price;'));
+      expect(content, contains('final int count;'));
+      expect(content, contains('final num price;'));
     });
   });
 
@@ -580,7 +580,7 @@ extension UserExtension on User {
 
         await specFile.writeAsString(jsonEncode(spec));
 
-        final result = await SwaggerToDartGenerator.generateModels(
+        await SwaggerToDartGenerator.generateModels(
           input: specFile.path,
           outputDir: modelsDir.path,
           libraryName: 'models',
@@ -595,7 +595,7 @@ extension UserExtension on User {
         expect(updatedContent, contains('void customFunction()'));
         expect(updatedContent, contains('class User'));
         expect(updatedContent, contains('final int id;'));
-        expect(updatedContent, contains('final String? name;'));
+        expect(updatedContent, contains('final String name;'));
         expect(updatedContent, contains('extension UserExtension'));
         expect(updatedContent, isNot(contains('class OldUser')));
         expect(updatedContent, isNot(contains('oldField')));

@@ -648,7 +648,6 @@ class SwaggerToDartGenerator {
 
     final className = _toPascalCase(name);
     final properties = schema['properties'] as Map<String, dynamic>? ?? {};
-    final requiredProps = (schema['required'] as List?)?.cast<String>() ?? const <String>[];
     final additionalProps = schema['additionalProperties'];
 
     // Если объект только с additionalProperties и без properties — генерируем
@@ -687,14 +686,12 @@ class SwaggerToDartGenerator {
 
     properties.forEach((propName, propSchemaRaw) {
       final propSchema = (propSchemaRaw ?? {}) as Map<String, dynamic>;
-      final isRequired = requiredProps.contains(propName);
       final propNullable = propSchema['nullable'] as bool? ?? false;
-      
-      // Поле non-nullable только если:
-      // 1. Оно в списке required И
-      // 2. Оно явно не помечено как nullable: true
-      // В противном случае поле nullable (опциональное)
-      final isNonNullable = isRequired && !propNullable;
+
+      // Правило nullable / required:
+      // - Если поле присутствует в схеме, оно считается required по умолчанию.
+      // - Если у поля явно указано nullable: true, оно генерируется как nullable.
+      final isNonNullable = !propNullable;
 
       final dartType = _dartTypeForSchema(propSchema, context, required: isNonNullable);
       fieldInfos[propName] = FieldInfo(
