@@ -22,7 +22,7 @@ the project context.
   - Implements per-file generation:
     - `_generateModelsPerFile` — main loop over schemas.
     - `_scanProjectForMarkers` — finds existing Dart files with
-      `/*SWAGGER-TO-DART:{endpoint}*/`.
+      `/*SWAGGER-TO-DART*/` marker.
     - `_createNewFileWithEnum` / `_createNewFileWithClass` — create new files with markers and style-specific imports.
     - `_updateExistingFileWithEnum` / `_updateExistingFileWithClass` — replace code **only** between
       `/*SWAGGER-TO-DART: Fields start*/` and `/*SWAGGER-TO-DART: Fields stop*/`.
@@ -43,7 +43,7 @@ the project context.
 
 - **CLI entrypoint**: `bin/dart_swagger_to_models.dart`
   - Parses options (`--input`, `--output-dir`, `--library-name`, `--style`,
-    `--project-dir`, `--endpoint`).
+    `--project-dir`).
   - Calls `SwaggerToDartGenerator.generateModels`.
 
 - **Tests**: `test/dart_swagger_to_models_test.dart`
@@ -60,10 +60,10 @@ the project context.
   - Files start with:
 
     ```dart
-    /*SWAGGER-TO-DART:{endpoint}*/
+    /*SWAGGER-TO-DART*/
     ```
 
-    where `{endpoint}` comes from the `--endpoint` CLI option (may be empty).
+    marker for identification.
   - Inside file:
 
     ```dart
@@ -89,11 +89,6 @@ the project context.
   - All three strategies use `FieldInfo.dartType` & `FieldInfo.isRequired`.
   - Nullability semantics are **style-independent**.
 
-- **Endpoint filtering (`--endpoint`)**
-  - If `endpoint == null`: generate/update **all** models.
-  - If `endpoint != null`: `_scanProjectForMarkers` returns only files whose
-    marker matches this endpoint string; only they are updated.
-
 ### Typical commands (for tools to suggest)
 
 - Basic:
@@ -111,14 +106,13 @@ dart run dart_swagger_to_models:dart_swagger_to_models \
   --style json_serializable
 ```
 
-- Selective regeneration by endpoint:
+- Regenerating existing files:
 
 ```bash
 dart run dart_swagger_to_models:dart_swagger_to_models \
   --input api.yaml \
   --output-dir lib/models \
-  --project-dir . \
-  --endpoint https://api.example.com/v1/users
+  --project-dir .
 ```
 
 ### When modifying this project (for LLMs)

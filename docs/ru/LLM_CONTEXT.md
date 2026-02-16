@@ -24,7 +24,7 @@
   - Отвечает за per-file генерацию:
     - `_generateModelsPerFile` — обход всех схем.
     - `_scanProjectForMarkers` — поиск существующих Dart-файлов
-      с маркером `/*SWAGGER-TO-DART:{endpoint}*/`.
+      с маркером `/*SWAGGER-TO-DART*/`.
     - `_createNewFileWithEnum` / `_createNewFileWithClass` —
       создание новых файлов с маркерами и импортами под стиль.
     - `_updateExistingFileWithEnum` / `_updateExistingFileWithClass` —
@@ -48,7 +48,7 @@
 
 - **CLI-вход**: `bin/dart_swagger_to_models.dart`
   - Парсит опции (`--input`, `--output-dir`, `--library-name`, `--style`,
-    `--project-dir`, `--endpoint`).
+    `--project-dir`).
   - Вызывает `SwaggerToDartGenerator.generateModels`.
 
 - **Тесты**: `test/dart_swagger_to_models_test.dart`
@@ -65,10 +65,10 @@
   - В начале файла:
 
     ```dart
-    /*SWAGGER-TO-DART:{endpoint}*/
+    /*SWAGGER-TO-DART*/
     ```
 
-    где `{endpoint}` — значение из CLI-параметра `--endpoint` (может быть пустым).
+    маркер для идентификации.
   - Внутри файла:
 
     ```dart
@@ -93,11 +93,6 @@
     - возвращает `'$base?'`, если `required == false`.
   - Это правило одинаково для всех стилей.
 
-- **Фильтрация по endpoint (`--endpoint`)**
-  - `endpoint == null` → генерируются/обновляются **все** модели.
-  - `endpoint != null` → `_scanProjectForMarkers` возвращает только те файлы,
-    где маркер содержит этот endpoint; обновляются только они.
-
 ### Частые команды (подсказка для инструментов)
 
 - Базовая генерация:
@@ -115,14 +110,13 @@ dart run dart_swagger_to_models:dart_swagger_to_models \
   --style json_serializable
 ```
 
-- Выборочная перегенерация по endpoint:
+- Перегенерация существующих файлов:
 
 ```bash
 dart run dart_swagger_to_models:dart_swagger_to_models \
   --input api.yaml \
   --output-dir lib/models \
-  --project-dir . \
-  --endpoint https://api.example.com/v1/users
+  --project-dir .
 ```
 
 ### Рекомендации при изменении проекта (для LLM)

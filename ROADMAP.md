@@ -15,7 +15,7 @@ dart_swagger_to_models — Roadmap
 
 ### 0.2.2 Generator configuration file
 - Add support for `dart_swagger_to_models.yaml` at project root:
-  - Global options: `defaultStyle`, `outputDir`, `projectDir`, default `endpoint`.
+  - Global options: `defaultStyle`, `outputDir`, `projectDir`.
   - Per-schema overrides: custom `className`, custom field names, type overrides.
 - Add `--config` CLI option to specify a custom config path.
 - Tests:

@@ -45,7 +45,6 @@ dart run dart_swagger_to_models:dart_swagger_to_models \
   - `json_serializable` — классы с `@JsonSerializable()` и делегацией в `_$ClassFromJson`/`_$ClassToJson`,
   - `freezed` — иммутабельные классы `@freezed` с `const factory` и `fromJson`.
 - **`--project-dir`**: корневая директория проекта для сканирования Dart файлов (поиск существующих файлов моделей, по умолчанию `.`).
-- **`--endpoint`**: URL endpoint'а для маркера `/*SWAGGER-TO-DART:{endpoint}*/`. Если указан — перегенерируются только файлы с таким маркером, если нет — генерируются/обновляются все модели.
 - **`--help`, `-h`**: показать помощь.
 
 ### Пример результата
@@ -86,16 +85,14 @@ dart run dart_swagger_to_models:dart_swagger_to_models \
 **Особенности режима:**
 
 - **Одна модель = один файл**: каждая схема из Swagger/OpenAPI генерируется в отдельный файл (например, `user.dart`, `order.dart`).
-- **Маркеры для идентификации**: каждый файл начинается с маркера `/*SWAGGER-TO-DART:{endpoint}*/`, где `{endpoint}` — URL endpoint'а, переданный через `--endpoint`.
+- **Маркеры для идентификации**: каждый файл начинается с маркера `/*SWAGGER-TO-DART*/` для идентификации.
 - **Интеграция с существующим кодом**: генератор сканирует проект (`--project-dir`) и обновляет существующие файлы с соответствующими маркерами.
 - **Сохранение кастомного кода**: содержимое между маркерами `/*SWAGGER-TO-DART: Fields start*/` и `/*SWAGGER-TO-DART: Fields stop*/` заменяется, всё остальное сохраняется (импорты, методы, расширения и т.д.).
-
-Если указать `--endpoint`, будут обновлены только файлы с маркером, содержащим этот URL. Это удобно для выборочной перегенерации моделей для конкретного endpoint'а.
 
 **Пример существующего файла:**
 
 ```dart
-/*SWAGGER-TO-DART:api.example.com*/
+/*SWAGGER-TO-DART*/
 
 import 'package:some_package/some_package.dart';
 

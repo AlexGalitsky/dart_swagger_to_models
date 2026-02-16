@@ -45,9 +45,6 @@ Models are generated from `definitions` / `components.schemas` with
   - `json_serializable` — classes with `@JsonSerializable()` and delegation to `_$ClassFromJson` / `_$ClassToJson`,
   - `freezed` — immutable `@freezed` classes with `const factory` and `fromJson`.
 - **`--project-dir`**: project root directory for scanning Dart files (searching for existing model files, default: `.`).
-- **`--endpoint`**: endpoint URL for the marker `/*SWAGGER-TO-DART:{endpoint}*/`.  
-  If provided, only files with this marker are regenerated;  
-  if omitted, all models are generated/updated.
 - **`--help`, `-h`**: show help.
 
 ### Example
@@ -93,8 +90,7 @@ dart run dart_swagger_to_models:dart_swagger_to_models \
 - **One model = one file**: each schema becomes its own Dart file
   (e.g. `user.dart`, `order.dart`).
 - **Markers for identification**: each file starts with a marker
-  `/*SWAGGER-TO-DART:{endpoint}*/`, where `{endpoint}` is the endpoint URL
-  passed via `--endpoint`.
+  `/*SWAGGER-TO-DART*/` for identification.
 - **Integration with existing code**: the generator scans the project
   (`--project-dir`) and updates existing files that contain such markers.
 - **Preserving custom code**: only the contents between markers
@@ -102,14 +98,10 @@ dart run dart_swagger_to_models:dart_swagger_to_models \
   `/*SWAGGER-TO-DART: Fields stop*/` are replaced;
   everything else (imports, methods, extensions, etc.) is preserved.
 
-If you pass `--endpoint`, only files whose marker contains this URL
-will be updated. This is convenient for **selective regeneration** of models
-for a specific endpoint.
-
 **Example of an existing file:**
 
 ```dart
-/*SWAGGER-TO-DART:api.example.com*/
+/*SWAGGER-TO-DART*/
 
 import 'package:some_package/some_package.dart';
 

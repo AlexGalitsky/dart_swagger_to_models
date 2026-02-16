@@ -15,7 +15,7 @@ dart_swagger_to_models — Дорожная карта
 
 ### 0.2.2 Конфигурационный файл генератора
 - Добавить поддержку файла `dart_swagger_to_models.yaml` в корне проекта:
-  - Глобальные опции: `defaultStyle`, `outputDir`, `projectDir`, `endpoint` по умолчанию.
+  - Глобальные опции: `defaultStyle`, `outputDir`, `projectDir`.
   - Переопределения для отдельных схем: кастомный `className`, имена полей, маппинг типов.
 - Добавить CLI‑опцию `--config` для указания пути к конфигу.
 - Тесты:

@@ -15,7 +15,7 @@
 
 ### 2.2 Интеграция с существующим кодом
 - Сканировать директории проекта для поиска Dart файлов
-- Искать маркер `/*SWAGGER-TO-DART:{endpoint_address}*/` в начале файла для идентификации моделей, относящихся к конкретному endpoint'у
+- Искать маркер `/*SWAGGER-TO-DART*/` в начале файла для идентификации моделей
 - Если файл модели не найден - создавать новый файл с соответствующим маркером
 - В существующих моделях искать блоки между маркерами:
   - `/*SWAGGER-TO-DART: Fields start*/`
@@ -85,7 +85,6 @@ swagger_to_dart [options]
 
 Опциональные параметры:
   --style, -t         Стиль генерации: json_serializable/freezed/plain_dart (по умолчанию: json_serializable)
-  --endpoint, -e      Конкретный endpoint для генерации (генерировать только модели для указанного endpoint'а)
   --model, -m         Конкретный файл модели для обновления (путь к файлу)
   --output, -o        Директория для выходных файлов (по умолчанию: lib/models)
   --recursive, -r     Рекурсивный поиск моделей в поддиректориях
@@ -102,7 +101,6 @@ swagger_to_dart [options]
 source: "https://api.example.com/swagger.json"
 style: "freezed"
 output: "lib/data/models"
-endpoints:
   - "/api/users"
   - "/api/posts"
 ignore_patterns:
@@ -173,9 +171,9 @@ generate_examples: true
 swagger_to_dart --source https://petstore.swagger.io/v2/swagger.json
 ```
 
-### Генерация для конкретного endpoint'а в freezed стиле:
+### Генерация в freezed стиле:
 ```bash
-swagger_to_dart --source ./openapi.yaml --style freezed --endpoint /users
+swagger_to_dart --source ./openapi.yaml --style freezed
 ```
 
 ### Обновление конкретного файла модели:

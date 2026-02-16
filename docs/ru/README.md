@@ -44,7 +44,6 @@ dart run dart_swagger_to_models:dart_swagger_to_models \
   - `json_serializable` — классы с `@JsonSerializable()` и делегацией в `_$ClassFromJson` / `_$ClassToJson`,
   - `freezed` — иммутабельные классы `@freezed` с `const factory` и `fromJson`.
 - **`--project-dir`** — корень проекта для сканирования существующих Dart-файлов.
-- **`--endpoint`** — URL endpoint'а для маркера `/*SWAGGER-TO-DART:{endpoint}*/` и выборочной перегенерации.
 - **`--help`, `-h`** — показать помощь.
 
 ### Правила null-safety
@@ -58,7 +57,7 @@ dart run dart_swagger_to_models:dart_swagger_to_models \
 
 Генератор всегда работает в режиме per-file:
 - каждая схема → отдельный Dart-файл (`user.dart`, `order.dart` и т.д.),
-- в начале файла — маркер `/*SWAGGER-TO-DART:{endpoint}*/`,
+- в начале файла — маркер `/*SWAGGER-TO-DART*/` для идентификации,
 - между маркерами `/*SWAGGER-TO-DART: Fields start*/` и
   `/*SWAGGER-TO-DART: Fields stop*/` код может безопасно перегенерироваться,
   остальной код (импорты, методы, расширения) сохраняется.
