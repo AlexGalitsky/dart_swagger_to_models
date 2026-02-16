@@ -1,0 +1,136 @@
+## dart_swagger_to_models — LLM context (EN)
+
+This file is optimized for neural network / LLM tools to quickly restore
+the project context.
+
+### What this project does
+
+- CLI tool that **generates Dart model classes** from **Swagger / OpenAPI (2.0 / 3.x)** specs.
+- Input: JSON/YAML spec (file path or URL).
+- Output: **one Dart file per schema** (per-file mode, always enabled).
+- Supports three generation styles:
+  - `plain_dart` — manual `fromJson` / `toJson`,
+  - `json_serializable` — `@JsonSerializable()` + `part '*.g.dart';`,
+  - `freezed` — `@freezed` + `part '*.freezed.dart';` + `part '*.g.dart';`.
+
+### Core files
+
+- **`lib/dart_swagger_to_models.dart`**
+  - Public API: `SwaggerToDartGenerator.generateModels({ ... })`.
+  - Parses spec (`loadSpec`, `detectVersion`, `_extractSchemas` / `_getAllSchemas`).
+  - Applies **nullability rule** (see below).
+  - Implements per-file generation:
+    - `_generateModelsPerFile` — main loop over schemas.
+    - `_scanProjectForMarkers` — finds existing Dart files with
+      `/*SWAGGER-TO-DART:{endpoint}*/`.
+    - `_createNewFileWithEnum` / `_createNewFileWithClass` — create new files with markers and style-specific imports.
+    - `_updateExistingFileWithEnum` / `_updateExistingFileWithClass` — replace code **only** between
+      `/*SWAGGER-TO-DART: Fields start*/` and `/*SWAGGER-TO-DART: Fields stop*/`.
+  - Uses strategy pattern for class body generation via `GeneratorFactory`.
+
+- **`lib/src/generators/*.dart`**
+  - `class_generator_strategy.dart`:
+    - `ClassGeneratorStrategy` interface with `generateFullClass(...)`.
+    - `FieldInfo` (name, `dartType`, `isRequired`, `schema`, `camelCaseName`).
+  - `plain_dart_generator.dart`:
+    - Builds normal Dart class with fields, `const` ctor, manual `fromJson`/`toJson`.
+  - `json_serializable_generator.dart`:
+    - Adds `@JsonSerializable()` and delegates JSON methods to generated functions.
+  - `freezed_generator.dart`:
+    - Adds `@freezed`, `const factory`, and `fromJson`.
+  - `generator_factory.dart`:
+    - Maps `GenerationStyle` → corresponding strategy implementation.
+
+- **CLI entrypoint**: `bin/dart_swagger_to_models.dart`
+  - Parses options (`--input`, `--output-dir`, `--library-name`, `--style`,
+    `--project-dir`, `--endpoint`).
+  - Calls `SwaggerToDartGenerator.generateModels`.
+
+- **Tests**: `test/dart_swagger_to_models_test.dart`
+  - End-to-end tests for:
+    - Swagger 2.0 and OpenAPI 3.0.
+    - `nullable` fields, `allOf`, arrays, `additionalProperties`, int vs num.
+    - All 3 styles (plain, json_serializable, freezed).
+    - Per-file mode and marker-based regeneration.
+
+### Key invariants / rules
+
+- **Per-file mode (ALWAYS on)**
+  - Each schema becomes its own file (`user.dart`, `order.dart`, etc.).
+  - Files start with:
+
+    ```dart
+    /*SWAGGER-TO-DART:{endpoint}*/
+    ```
+
+    where `{endpoint}` comes from the `--endpoint` CLI option (may be empty).
+  - Inside file:
+
+    ```dart
+    /*SWAGGER-TO-DART: Fields start*/
+    // generated code
+    /*SWAGGER-TO-DART: Fields stop*/
+    ```
+
+  - On regeneration:
+    - **Only** content between `Fields start/stop` is replaced.
+    - Everything else (imports, helper functions, extensions) is preserved.
+
+- **Nullability rule (important for models)**
+  - If a field is present in the schema `properties` → it is **treated as required by default**.
+  - If the field has `nullable: true` → it is generated as **nullable** (`Type?`).
+  - This rule is implemented in `_generateClass`:
+    - `isNonNullable = !propNullable;`
+    - `dartType = _dartTypeForSchema(..., required: isNonNullable);`
+  - `_dartTypeForSchema`:
+    - Returns `base` if `required == true`, otherwise `'$base?'`.
+
+- **Styles behave consistently**
+  - All three strategies use `FieldInfo.dartType` & `FieldInfo.isRequired`.
+  - Nullability semantics are **style-independent**.
+
+- **Endpoint filtering (`--endpoint`)**
+  - If `endpoint == null`: generate/update **all** models.
+  - If `endpoint != null`: `_scanProjectForMarkers` returns only files whose
+    marker matches this endpoint string; only they are updated.
+
+### Typical commands (for tools to suggest)
+
+- Basic:
+
+```bash
+dart run dart_swagger_to_models:dart_swagger_to_models --input api.yaml
+```
+
+- With style and custom output:
+
+```bash
+dart run dart_swagger_to_models:dart_swagger_to_models \
+  --input api.yaml \
+  --output-dir lib/models \
+  --style json_serializable
+```
+
+- Selective regeneration by endpoint:
+
+```bash
+dart run dart_swagger_to_models:dart_swagger_to_models \
+  --input api.yaml \
+  --output-dir lib/models \
+  --project-dir . \
+  --endpoint https://api.example.com/v1/users
+```
+
+### When modifying this project (for LLMs)
+
+- If you change nullability logic:
+  - Update `_generateClass` and `_dartTypeForSchema`.
+  - Sync tests in `test/dart_swagger_to_models_test.dart` that assert on field
+    declarations (they look for strings like `final String? email;`).
+
+- If you add a new style:
+  - Add new value to `GenerationStyle`.
+  - Implement a new `ClassGeneratorStrategy`.
+  - Wire it into `GeneratorFactory.createStrategy`.
+  - Extend tests in the `Generation styles` group.
+

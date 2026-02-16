@@ -1,0 +1,45 @@
+---
+globs: lib/**/*.dart,test/**/*.dart
+---
+
+# Generator & Tests Guide — dart_swagger_to_models
+
+When modifying generation logic or tests, keep these anchors in mind:
+
+- Main generator facade:
+  - [lib/dart_swagger_to_models.dart](mdc:lib/dart_swagger_to_models.dart)
+
+- Generation strategies (Strategy pattern):
+  - [lib/src/generators/class_generator_strategy.dart](mdc:lib/src/generators/class_generator_strategy.dart)
+  - [lib/src/generators/plain_dart_generator.dart](mdc:lib/src/generators/plain_dart_generator.dart)
+  - [lib/src/generators/json_serializable_generator.dart](mdc:lib/src/generators/json_serializable_generator.dart)
+  - [lib/src/generators/freezed_generator.dart](mdc:lib/src/generators/freezed_generator.dart)
+  - [lib/src/generators/generator_factory.dart](mdc:lib/src/generators/generator_factory.dart)
+
+- End-to-end tests describing expected behavior:
+  - [test/dart_swagger_to_models_test.dart](mdc:test/dart_swagger_to_models_test.dart)
+
+Key contracts:
+
+- Per-file mode:
+  - One schema = one Dart file.
+  - Files contain markers:
+    - `/*SWAGGER-TO-DART:{endpoint}*/`
+    - `/*SWAGGER-TO-DART: Fields start*/` / `/*SWAGGER-TO-DART: Fields stop*/`
+  - Only the region between Fields start/stop is regenerated.
+
+- Nullability:
+  - Field present in `properties` → required by default.
+  - `nullable: true` → generate `Type?`.
+
+If you change:
+
+- Nullability logic:
+  - Update `_generateClass` and `_dartTypeForSchema` in
+    [lib/dart_swagger_to_models.dart](mdc:lib/dart_swagger_to_models.dart),
+  - Adjust expectations in [test/dart_swagger_to_models_test.dart](mdc:test/dart_swagger_to_models_test.dart).
+
+- Styles or per-file behavior:
+  - Update generator strategies in `lib/src/generators`,
+  - Extend or fix tests in `test/dart_swagger_to_models_test.dart`.
+

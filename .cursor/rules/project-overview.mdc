@@ -1,0 +1,29 @@
+---
+alwaysApply: true
+---
+
+# Project Overview — dart_swagger_to_models
+
+- Main library entry point: [lib/dart_swagger_to_models.dart](mdc:lib/dart_swagger_to_models.dart)
+- CLI entry point: [bin/dart_swagger_to_models.dart](mdc:bin/dart_swagger_to_models.dart)
+- Generators (strategy pattern): [lib/src/generators](mdc:lib/src/generators)
+
+Core behavior:
+
+- Generates **null-safe Dart models** from **Swagger / OpenAPI** specs (JSON/YAML).
+- Always works in **per-file** mode: one schema = one Dart file.
+- Supports three styles:
+  - `plain_dart` (manual `fromJson` / `toJson`)
+  - `json_serializable` (`@JsonSerializable()`)
+  - `freezed` (`@freezed`)
+
+Nullability rule:
+
+- If a field is present in schema `properties` → it is **required by default**.
+- If a field has `nullable: true` → it is generated as nullable (`Type?`).
+
+For a fast LLM-oriented summary of the project, see:
+
+- [docs/en/LLM_CONTEXT.md](mdc:docs/en/LLM_CONTEXT.md)
+- [docs/ru/LLM_CONTEXT.md](mdc:docs/ru/LLM_CONTEXT.md)
+
