@@ -21,7 +21,7 @@ void main(List<String> arguments) async {
     ..addOption(
       'library-name',
       abbr: 'l',
-      help: 'Имя библиотеки (имя файла без .dart).',
+      help: 'Имя библиотеки (исторический параметр, в per-file режиме практически не используется).',
       valueHelp: 'models',
       defaultsTo: 'models',
     )
@@ -33,21 +33,16 @@ void main(List<String> arguments) async {
       allowed: ['plain_dart', 'json_serializable', 'freezed'],
       defaultsTo: 'plain_dart',
     )
-    ..addFlag(
-      'per-file',
-      help: 'Режим генерации: одна модель = один файл (режим 2.2).',
-      defaultsTo: false,
-    )
     ..addOption(
       'project-dir',
-      help: 'Корневая директория проекта для сканирования Dart файлов (используется с --per-file).',
+      help: 'Корневая директория проекта для сканирования Dart файлов (поиск существующих моделей).',
       valueHelp: '.',
       defaultsTo: '.',
     )
     ..addOption(
       'endpoint',
-      help: 'Адрес endpoint для маркера /*SWAGGER-TO-DART:{endpoint}*/ (используется с --per-file).',
-      valueHelp: 'api.example.com',
+      help: 'URL endpoint\'а для маркера /*SWAGGER-TO-DART:{endpoint}*/ и выборочной перегенерации моделей.',
+      valueHelp: 'https://api.example.com/v1/users',
     )
     ..addFlag(
       'help',
@@ -76,7 +71,6 @@ void main(List<String> arguments) async {
   final outputDir = argResults['output-dir'] as String;
   final libraryName = argResults['library-name'] as String;
   final styleName = argResults['style'] as String;
-  final perFile = argResults['per-file'] as bool;
   final projectDir = argResults['project-dir'] as String;
   final endpoint = argResults['endpoint'] as String?;
 
@@ -94,23 +88,14 @@ void main(List<String> arguments) async {
     return;
   }
 
-  if (perFile && endpoint == null) {
-    stderr.writeln('При использовании --per-file необходимо указать --endpoint.');
-    stderr.writeln();
-    _printUsage(parser);
-    exitCode = 64;
-    return;
-  }
-
   try {
     final result = await SwaggerToDartGenerator.generateModels(
       input: input,
       outputDir: outputDir,
       libraryName: libraryName,
       style: style,
-      perFile: perFile,
-      projectDir: perFile ? projectDir : null,
-      endpoint: perFile ? endpoint! : null,
+      projectDir: projectDir,
+      endpoint: endpoint,
     );
 
     stdout.writeln('Генерация завершена успешно.');
@@ -129,7 +114,7 @@ void _printUsage(ArgParser parser) {
   stdout.writeln('dart_swagger_to_models — генерация Dart-моделей из Swagger/OpenAPI');
   stdout.writeln();
   stdout.writeln('Использование:');
-  stdout.writeln('  dart run bin/dart_swagger_to_models.dart --input api.yaml');
+  stdout.writeln('  dart run dart_swagger_to_models:dart_swagger_to_models --input api.yaml');
   stdout.writeln();
   stdout.writeln('Опции:');
   stdout.writeln(parser.usage);

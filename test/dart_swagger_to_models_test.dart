@@ -82,15 +82,19 @@ void main() {
         input: specFile.path,
         outputDir: '${tempDir.path}/models',
         libraryName: 'api_models',
+        projectDir: tempDir.path,
+        endpoint: null,
       );
 
-      final content = await File(result.generatedFiles.first).readAsString();
+      final statusFile =
+          result.generatedFiles.firstWhere((f) => f.contains('status.dart'));
+      final content = await File(statusFile).readAsString();
       expect(content, contains('enum Status'));
       expect(content, contains('active'));
       expect(content, contains('inactive'));
       expect(content, contains('pending'));
-      expect(content, contains('Status.fromJson'));
-      expect(content, contains('status?.toJson()'));
+      expect(content, contains('Status? fromJson'));
+      expect(content, contains('dynamic toJson() => value;'));
     });
 
     test('поддерживает OpenAPI 3.0 с nullable полями', () async {
@@ -126,9 +130,13 @@ void main() {
         input: specFile.path,
         outputDir: '${tempDir.path}/models',
         libraryName: 'api_models',
+        projectDir: tempDir.path,
+        endpoint: null,
       );
 
-      final content = await File(result.generatedFiles.first).readAsString();
+      final productFile =
+          result.generatedFiles.firstWhere((f) => f.contains('product.dart'));
+      final content = await File(productFile).readAsString();
       expect(content, contains('class Product'));
       expect(content, contains('final int id;'));
       expect(content, contains('final String? name;'));
@@ -179,14 +187,25 @@ void main() {
         input: specFile.path,
         outputDir: '${tempDir.path}/models',
         libraryName: 'api_models',
+        projectDir: tempDir.path,
+        endpoint: null,
       );
 
-      final content = await File(result.generatedFiles.first).readAsString();
-      expect(content, contains('class User'));
-      expect(content, contains('final int id;'));
-      expect(content, contains('final DateTime? createdAt;'));
-      expect(content, contains('final String? name;'));
-      expect(content, contains('final String? email;'));
+      final baseFile =
+          result.generatedFiles.firstWhere((f) => f.contains('base_entity.dart'));
+      final userFile =
+          result.generatedFiles.firstWhere((f) => f.contains('user.dart'));
+
+      final baseContent = await File(baseFile).readAsString();
+      final userContent = await File(userFile).readAsString();
+
+      expect(baseContent, contains('class BaseEntity'));
+      expect(baseContent, contains('final int id;'));
+      expect(baseContent, contains('final DateTime? createdAt;'));
+
+      expect(userContent, contains('class User'));
+      expect(userContent, contains('final String? name;'));
+      expect(userContent, contains('final String? email;'));
     });
 
     test('поддерживает массивы с вложенными типами', () async {
@@ -220,9 +239,13 @@ void main() {
         input: specFile.path,
         outputDir: '${tempDir.path}/models',
         libraryName: 'api_models',
+        projectDir: tempDir.path,
+        endpoint: null,
       );
 
-      final content = await File(result.generatedFiles.first).readAsString();
+      final userFile =
+          result.generatedFiles.firstWhere((f) => f.contains('user.dart'));
+      final content = await File(userFile).readAsString();
       expect(content, contains('final List<String>? tags;'));
       expect(content, contains('List<dynamic>'));
     });
@@ -296,9 +319,13 @@ void main() {
         input: specFile.path,
         outputDir: '${tempDir.path}/models',
         libraryName: 'api_models',
+        projectDir: tempDir.path,
+        endpoint: null,
       );
 
-      final content = await File(result.generatedFiles.first).readAsString();
+      final numbersFile =
+          result.generatedFiles.firstWhere((f) => f.contains('numbers.dart'));
+      final content = await File(numbersFile).readAsString();
       expect(content, contains('final int? count;'));
       expect(content, contains('final num? price;'));
     });
@@ -334,9 +361,13 @@ void main() {
         outputDir: '${tempDir.path}/models',
         libraryName: 'api_models',
         style: GenerationStyle.plainDart,
+        projectDir: tempDir.path,
+        endpoint: null,
       );
 
-      final content = await File(result.generatedFiles.first).readAsString();
+      final userFile =
+          result.generatedFiles.firstWhere((f) => f.contains('user.dart'));
+      final content = await File(userFile).readAsString();
       expect(content, isNot(contains('@JsonSerializable')));
       expect(content, isNot(contains('@freezed')));
       expect(content, contains('factory User.fromJson'));
@@ -372,9 +403,13 @@ void main() {
         outputDir: '${tempDir.path}/models',
         libraryName: 'api_models',
         style: GenerationStyle.jsonSerializable,
+        projectDir: tempDir.path,
+        endpoint: null,
       );
 
-      final content = await File(result.generatedFiles.first).readAsString();
+      final userFile =
+          result.generatedFiles.firstWhere((f) => f.contains('user.dart'));
+      final content = await File(userFile).readAsString();
       expect(content, contains('@JsonSerializable()'));
       expect(
         content,
@@ -385,7 +420,7 @@ void main() {
         contains('Map<String, dynamic> toJson() => _\$UserToJson(this);'),
       );
       expect(content, contains("import 'package:json_annotation/json_annotation.dart';"));
-      expect(content, contains("part 'api_models.g.dart';"));
+      expect(content, contains("part 'user.g.dart';"));
     });
 
     test('freezed генерирует @freezed и const factory', () async {
@@ -417,9 +452,13 @@ void main() {
         outputDir: '${tempDir.path}/models',
         libraryName: 'api_models',
         style: GenerationStyle.freezed,
+        projectDir: tempDir.path,
+        endpoint: null,
       );
 
-      final content = await File(result.generatedFiles.first).readAsString();
+      final userFile =
+          result.generatedFiles.firstWhere((f) => f.contains('user.dart'));
+      final content = await File(userFile).readAsString();
       expect(content, contains('@freezed'));
       expect(content, contains('class User with _\$User {'));
       expect(content, contains('const factory User({'));
@@ -428,11 +467,11 @@ void main() {
         contains('factory User.fromJson(Map<String, dynamic> json) => _\$UserFromJson(json);'),
       );
       expect(content, contains("import 'package:freezed_annotation/freezed_annotation.dart';"));
-      expect(content, contains("part 'api_models.freezed.dart';"));
-      expect(content, contains("part 'api_models.g.dart';"));
+      expect(content, contains("part 'user.freezed.dart';"));
+      expect(content, contains("part 'user.g.dart';"));
     });
 
-    group('Режим per-file (2.2)', () {
+    group('Режим per-file (одна модель = один файл)', () {
       test('создаёт отдельные файлы для каждой модели', () async {
         final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_test_');
         final specFile = File('${tempDir.path}/swagger.json');
@@ -470,9 +509,8 @@ void main() {
           outputDir: '${tempDir.path}/models',
           libraryName: 'models',
           style: GenerationStyle.plainDart,
-          perFile: true,
           projectDir: tempDir.path,
-          endpoint: 'api.example.com',
+          endpoint: null,
         );
 
         expect(result.generatedFiles.length, greaterThan(1));
@@ -480,9 +518,11 @@ void main() {
         expect(result.generatedFiles.any((f) => f.contains('order.dart')), isTrue);
 
         // Проверяем содержимое файла user.dart
-        final userFile = result.generatedFiles.firstWhere((f) => f.contains('user.dart'));
+        final userFile =
+            result.generatedFiles.firstWhere((f) => f.contains('user.dart'));
         final userContent = await File(userFile).readAsString();
-        expect(userContent, contains('/*SWAGGER-TO-DART:api.example.com*/'));
+        // endpoint не задан, поэтому маркер без URL
+        expect(userContent, contains('/*SWAGGER-TO-DART:*/'));
         expect(userContent, contains('/*SWAGGER-TO-DART: Fields start*/'));
         expect(userContent, contains('/*SWAGGER-TO-DART: Fields stop*/'));
         expect(userContent, contains('class User'));
@@ -545,7 +585,6 @@ extension UserExtension on User {
           outputDir: modelsDir.path,
           libraryName: 'models',
           style: GenerationStyle.plainDart,
-          perFile: true,
           projectDir: tempDir.path,
           endpoint: 'api.example.com',
         );
@@ -591,14 +630,14 @@ extension UserExtension on User {
           outputDir: '${tempDir.path}/models',
           libraryName: 'models',
           style: GenerationStyle.jsonSerializable,
-          perFile: true,
           projectDir: tempDir.path,
-          endpoint: 'api.example.com',
+          endpoint: null,
         );
 
-        final productFile = result.generatedFiles.firstWhere((f) => f.contains('product.dart'));
+        final productFile =
+            result.generatedFiles.firstWhere((f) => f.contains('product.dart'));
         final content = await File(productFile).readAsString();
-        expect(content, contains('/*SWAGGER-TO-DART:api.example.com*/'));
+        expect(content, contains('/*SWAGGER-TO-DART:*/'));
         expect(content, contains("import 'package:json_annotation/json_annotation.dart';"));
         expect(content, contains("part 'product.g.dart';"));
         expect(content, contains('@JsonSerializable()'));
@@ -636,14 +675,14 @@ extension UserExtension on User {
           outputDir: '${tempDir.path}/models',
           libraryName: 'models',
           style: GenerationStyle.freezed,
-          perFile: true,
           projectDir: tempDir.path,
-          endpoint: 'api.example.com',
+          endpoint: null,
         );
 
-        final categoryFile = result.generatedFiles.firstWhere((f) => f.contains('category.dart'));
+        final categoryFile =
+            result.generatedFiles.firstWhere((f) => f.contains('category.dart'));
         final content = await File(categoryFile).readAsString();
-        expect(content, contains('/*SWAGGER-TO-DART:api.example.com*/'));
+        expect(content, contains('/*SWAGGER-TO-DART:*/'));
         expect(content, contains("import 'package:freezed_annotation/freezed_annotation.dart';"));
         expect(content, contains("part 'category.freezed.dart';"));
         expect(content, contains("part 'category.g.dart';"));
