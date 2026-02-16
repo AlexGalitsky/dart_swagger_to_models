@@ -5,6 +5,9 @@ import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
 import 'package:yaml/yaml.dart';
 
+import 'src/generators/class_generator_strategy.dart';
+import 'src/generators/generator_factory.dart';
+
 /// Тип Swagger/OpenAPI-спецификации.
 enum SpecVersion { swagger2, openApi3 }
 
@@ -388,20 +391,14 @@ class SwaggerToDartGenerator {
     buffer.writeln();
 
     // Добавляем импорты и part'ы в зависимости от стиля
-    switch (style) {
-      case GenerationStyle.plainDart:
-        break;
-      case GenerationStyle.jsonSerializable:
-        buffer.writeln("import 'package:json_annotation/json_annotation.dart';");
-        buffer.writeln("part '$fileName.g.dart';");
-        buffer.writeln();
-        break;
-      case GenerationStyle.freezed:
-        buffer.writeln("import 'package:freezed_annotation/freezed_annotation.dart';");
-        buffer.writeln("part '$fileName.freezed.dart';");
-        buffer.writeln("part '$fileName.g.dart';");
-        buffer.writeln();
-        break;
+    // Для enum'ов импорты не нужны, но оставляем для консистентности
+    final strategy = GeneratorFactory.createStrategy(style);
+    final imports = strategy.generateImportsAndParts(fileName);
+    for (final import in imports) {
+      buffer.writeln(import);
+    }
+    if (imports.isNotEmpty) {
+      buffer.writeln();
     }
 
     buffer.writeln('/*SWAGGER-TO-DART: Fields start*/');
@@ -427,20 +424,13 @@ class SwaggerToDartGenerator {
     buffer.writeln();
 
     // Добавляем импорты и part'ы в зависимости от стиля
-    switch (style) {
-      case GenerationStyle.plainDart:
-        break;
-      case GenerationStyle.jsonSerializable:
-        buffer.writeln("import 'package:json_annotation/json_annotation.dart';");
-        buffer.writeln("part '$fileName.g.dart';");
-        buffer.writeln();
-        break;
-      case GenerationStyle.freezed:
-        buffer.writeln("import 'package:freezed_annotation/freezed_annotation.dart';");
-        buffer.writeln("part '$fileName.freezed.dart';");
-        buffer.writeln("part '$fileName.g.dart';");
-        buffer.writeln();
-        break;
+    final strategy = GeneratorFactory.createStrategy(style);
+    final imports = strategy.generateImportsAndParts(fileName);
+    for (final import in imports) {
+      buffer.writeln(import);
+    }
+    if (imports.isNotEmpty) {
+      buffer.writeln();
     }
 
     buffer.writeln('/*SWAGGER-TO-DART: Fields start*/');
@@ -694,8 +684,7 @@ class SwaggerToDartGenerator {
     }
 
     // Общая информация по полям
-    final fields = <String, Map<String, dynamic>>{};
-    final requiredFieldNames = <String>{};
+    final fieldInfos = <String, FieldInfo>{};
 
     properties.forEach((propName, propSchemaRaw) {
       final propSchema = (propSchemaRaw ?? {}) as Map<String, dynamic>;
@@ -703,136 +692,23 @@ class SwaggerToDartGenerator {
       final propNullable = propSchema['nullable'] as bool? ?? false;
       final isActuallyRequired = isRequired && !propNullable && !nullable;
 
-      fields[propName] = {
-        'schema': propSchema,
-        'required': isActuallyRequired,
-      };
-      if (isActuallyRequired) {
-        requiredFieldNames.add(propName);
-      }
+      final dartType = _dartTypeForSchema(propSchema, context, required: isActuallyRequired);
+      fieldInfos[propName] = FieldInfo(
+        name: propName,
+        dartType: dartType,
+        isRequired: isActuallyRequired,
+        schema: propSchema,
+      );
     });
 
-    switch (style) {
-      case GenerationStyle.plainDart:
-        final classBuffer = StringBuffer()
-          ..writeln('class $className {');
-
-        // Поля
-        fields.forEach((propName, data) {
-          final propSchema = data['schema'] as Map<String, dynamic>;
-          final isRequired = data['required'] as bool;
-          final type = _dartTypeForSchema(propSchema, context, required: isRequired);
-          final fieldName = _toCamelCase(propName);
-          classBuffer.writeln('  final $type $fieldName;');
-        });
-
-        classBuffer.writeln();
-
-        // Конструктор
-        classBuffer.writeln('  const $className({');
-        fields.forEach((propName, data) {
-          final propSchema = data['schema'] as Map<String, dynamic>;
-          final isRequired = data['required'] as bool;
-          final fieldName = _toCamelCase(propName);
-          final prefix = isRequired ? 'required ' : '';
-          classBuffer.writeln('    $prefix this.$fieldName,');
-        });
-        classBuffer.writeln('  });');
-        classBuffer.writeln();
-
-        // fromJson
-        classBuffer.writeln('  factory $className.fromJson(Map<String, dynamic> json) {');
-        classBuffer.writeln('    return $className(');
-        fields.forEach((propName, data) {
-          final propSchema = data['schema'] as Map<String, dynamic>;
-          final fieldName = _toCamelCase(propName);
-          final jsonKey = propName;
-          final assign = _fromJsonExpression('json[\'$jsonKey\']', propSchema, context);
-          classBuffer.writeln('      $fieldName: $assign,');
-        });
-        classBuffer.writeln('    );');
-        classBuffer.writeln('  }');
-        classBuffer.writeln();
-
-        // toJson
-        classBuffer.writeln('  Map<String, dynamic> toJson() {');
-        classBuffer.writeln('    return <String, dynamic>{');
-        fields.forEach((propName, data) {
-          final propSchema = data['schema'] as Map<String, dynamic>;
-          final fieldName = _toCamelCase(propName);
-          final jsonKey = propName;
-          final assign = _toJsonExpression(fieldName, propSchema, context);
-          classBuffer.writeln('      \'$jsonKey\': $assign,');
-        });
-        classBuffer.writeln('    };');
-        classBuffer.writeln('  }');
-
-        classBuffer.writeln('}');
-        return classBuffer.toString();
-
-      case GenerationStyle.jsonSerializable:
-        final classBuffer = StringBuffer()
-          ..writeln('@JsonSerializable()')
-          ..writeln('class $className {');
-
-        // Поля
-        fields.forEach((propName, data) {
-          final propSchema = data['schema'] as Map<String, dynamic>;
-          final isRequired = data['required'] as bool;
-          final type = _dartTypeForSchema(propSchema, context, required: isRequired);
-          final fieldName = _toCamelCase(propName);
-          classBuffer.writeln('  final $type $fieldName;');
-        });
-
-        classBuffer.writeln();
-
-        // Конструктор
-        classBuffer.writeln('  const $className({');
-        fields.forEach((propName, data) {
-          final propSchema = data['schema'] as Map<String, dynamic>;
-          final isRequired = data['required'] as bool;
-          final fieldName = _toCamelCase(propName);
-          final prefix = isRequired ? 'required ' : '';
-          classBuffer.writeln('    $prefix this.$fieldName,');
-        });
-        classBuffer.writeln('  });');
-        classBuffer.writeln();
-
-        // fromJson/toJson делегируем json_serializable
-        classBuffer.writeln(
-            '  factory $className.fromJson(Map<String, dynamic> json) => _\$${className}FromJson(json);');
-        classBuffer.writeln();
-        classBuffer.writeln(
-            '  Map<String, dynamic> toJson() => _\$${className}ToJson(this);');
-
-        classBuffer.writeln('}');
-        return classBuffer.toString();
-
-      case GenerationStyle.freezed:
-        final classBuffer = StringBuffer()
-          ..writeln('@freezed')
-          ..writeln('class $className with _\$${className} {');
-
-        // const factory
-        classBuffer.writeln('  const factory $className({');
-        fields.forEach((propName, data) {
-          final propSchema = data['schema'] as Map<String, dynamic>;
-          final isRequired = data['required'] as bool;
-          final type = _dartTypeForSchema(propSchema, context, required: isRequired);
-          final fieldName = _toCamelCase(propName);
-          final prefix = isRequired ? 'required ' : '';
-          classBuffer.writeln('    $prefix$type $fieldName,');
-        });
-        classBuffer.writeln('  }) = _${className};');
-        classBuffer.writeln();
-
-        // fromJson делегируем freezed/json_serializable
-        classBuffer.writeln(
-            '  factory $className.fromJson(Map<String, dynamic> json) => _\$${className}FromJson(json);');
-
-        classBuffer.writeln('}');
-        return classBuffer.toString();
-    }
+    // Используем стратегию для генерации класса
+    final strategy = GeneratorFactory.createStrategy(style);
+    return strategy.generateFullClass(
+      className,
+      fieldInfos,
+      (jsonKey, schema) => _fromJsonExpression('json[\'$jsonKey\']', schema, context),
+      (fieldName, schema) => _toJsonExpression(fieldName, schema, context),
+    );
   }
 
   static String _generateAllOfClass(
@@ -1143,11 +1019,5 @@ class $className {
       ..removeWhere((e) => e.isEmpty);
     if (parts.isEmpty) return 'Unknown';
     return parts.map((p) => p[0].toUpperCase() + p.substring(1)).join();
-  }
-
-  static String _toCamelCase(String name) {
-    final pascal = _toPascalCase(name);
-    if (pascal.isEmpty) return '';
-    return pascal[0].toLowerCase() + pascal.substring(1);
   }
 }
