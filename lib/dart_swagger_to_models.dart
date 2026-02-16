@@ -69,16 +69,12 @@ class SwaggerToDartGenerator {
   /// [style] — стиль генерации моделей (plain_dart/json_serializable/freezed).
   /// [projectDir] — корневая директория проекта для сканирования Dart файлов
   ///                (поиск существующих файлов моделей с маркерами).
-  /// [endpoint] — URL endpoint'а:
-  ///   - если null → обновляются/создаются файлы для всех моделей;
-  ///   - если не null → обновляются только файлы с маркером /*SWAGGER-TO-DART:{endpoint}*/.
   static Future<GenerationResult> generateModels({
     required String input,
     String outputDir = 'lib/models',
     String libraryName = 'models',
     GenerationStyle style = GenerationStyle.plainDart,
     String? projectDir,
-    String? endpoint,
   }) async {
     final spec = await loadSpec(input);
     final version = detectVersion(spec);
@@ -101,7 +97,6 @@ class SwaggerToDartGenerator {
       style: style,
       outputDir: outputDir,
       projectDir: projectDir ?? '.',
-      endpoint: endpoint,
     );
   }
 
@@ -112,7 +107,6 @@ class SwaggerToDartGenerator {
     required GenerationStyle style,
     required String outputDir,
     required String projectDir,
-    String? endpoint,
   }) async {
     final generatedFiles = <String>[];
     final outDir = Directory(outputDir);
@@ -120,14 +114,10 @@ class SwaggerToDartGenerator {
       await outDir.create(recursive: true);
     }
 
-    // true, если нужно обновлять только файлы с конкретным endpoint'ом
-    final onlySelectedEndpoint = endpoint != null;
-
     // Сканируем проект для поиска существующих файлов с маркерами
     final existingFiles = await _scanProjectForMarkers(
       projectDir,
       outputDir,
-      endpoint,
     );
 
     // Сначала генерируем enum'ы
@@ -146,11 +136,6 @@ class SwaggerToDartGenerator {
       final filePath = p.join(outputDir, '$fileName.dart');
       final existingContent = existingFiles[modelName];
 
-      if (onlySelectedEndpoint && existingContent == null) {
-        // Для выборочной перегенерации по endpoint пропускаем модели без файла с этим endpoint
-        continue;
-      }
-
       final fileContent = existingContent != null
           ? _updateExistingFileWithEnum(
               existingContent,
@@ -158,14 +143,12 @@ class SwaggerToDartGenerator {
               entry.value,
               context,
               style,
-              endpoint,
             )
           : _createNewFileWithEnum(
               entry.key,
               entry.value,
               context,
               style,
-              endpoint,
               fileName,
             );
 
@@ -184,10 +167,6 @@ class SwaggerToDartGenerator {
         final filePath = p.join(outputDir, '$fileName.dart');
         final existingContent = existingFiles[modelName];
 
-        if (onlySelectedEndpoint && existingContent == null) {
-          continue;
-        }
-
         final fileContent = existingContent != null
             ? _updateExistingFileWithClass(
                 existingContent,
@@ -195,14 +174,12 @@ class SwaggerToDartGenerator {
                 schemaMap,
                 context,
                 style,
-                endpoint,
               )
             : _createNewFileWithClass(
                 entry.key,
                 schemaMap,
                 context,
                 style,
-                endpoint,
                 fileName,
               );
 
@@ -220,15 +197,14 @@ class SwaggerToDartGenerator {
   }
 
   /// Сканирует проект для поиска Dart файлов с маркерами.
-  /// Если [endpoint] != null — выбирает только файлы с этим endpoint'ом.
   /// Возвращает Map<ИмяМодели, СодержимоеФайла>.
   static Future<Map<String, String>> _scanProjectForMarkers(
     String projectDir,
     String outputDir,
-    String? endpoint,
   ) async {
     final result = <String, String>{};
-    final markerPattern = RegExp(r'/\*SWAGGER-TO-DART:([^*]*)\*/');
+    // Поддерживаем оба формата: /*SWAGGER-TO-DART*/ и /*SWAGGER-TO-DART:...*/ для обратной совместимости
+    final markerPattern = RegExp(r'/\*SWAGGER-TO-DART(:[^*]*)?\*/');
 
     // Сначала сканируем outputDir
     final outputDirectory = Directory(outputDir);
@@ -239,12 +215,9 @@ class SwaggerToDartGenerator {
             final content = await entity.readAsString();
             final match = markerPattern.firstMatch(content);
             if (match != null) {
-              final markerEndpoint = (match.group(1) ?? '').trim();
-              if (endpoint == null || markerEndpoint == endpoint) {
-                final fileName = p.basenameWithoutExtension(entity.path);
-                final modelName = _toPascalCase(fileName);
-                result[modelName] = content;
-              }
+              final fileName = p.basenameWithoutExtension(entity.path);
+              final modelName = _toPascalCase(fileName);
+              result[modelName] = content;
             }
           } catch (_) {
             // Игнорируем ошибки чтения файлов
@@ -266,13 +239,10 @@ class SwaggerToDartGenerator {
             final content = await entity.readAsString();
             final match = markerPattern.firstMatch(content);
             if (match != null) {
-              final markerEndpoint = (match.group(1) ?? '').trim();
-              if (endpoint == null || markerEndpoint == endpoint) {
-                final fileName = p.basenameWithoutExtension(entity.path);
-                final modelName = _toPascalCase(fileName);
-                // Не перезаписываем, если уже есть в outputDir
-                result.putIfAbsent(modelName, () => content);
-              }
+              final fileName = p.basenameWithoutExtension(entity.path);
+              final modelName = _toPascalCase(fileName);
+              // Не перезаписываем, если уже есть в outputDir
+              result.putIfAbsent(modelName, () => content);
             }
           } catch (_) {
             // Игнорируем ошибки чтения файлов
@@ -290,11 +260,10 @@ class SwaggerToDartGenerator {
     Map<String, dynamic> schema,
     GenerationContext context,
     GenerationStyle style,
-    String? endpoint,
     String fileName,
   ) {
     final buffer = StringBuffer();
-    buffer.writeln('/*SWAGGER-TO-DART:${endpoint ?? ''}*/');
+    buffer.writeln('/*SWAGGER-TO-DART*/');
     buffer.writeln();
 
     // Добавляем импорты и part'ы в зависимости от стиля
@@ -323,11 +292,10 @@ class SwaggerToDartGenerator {
     Map<String, dynamic> schema,
     GenerationContext context,
     GenerationStyle style,
-    String? endpoint,
     String fileName,
   ) {
     final buffer = StringBuffer();
-    buffer.writeln('/*SWAGGER-TO-DART:${endpoint ?? ''}*/');
+    buffer.writeln('/*SWAGGER-TO-DART*/');
     buffer.writeln();
 
     // Добавляем импорты и part'ы в зависимости от стиля
@@ -356,7 +324,6 @@ class SwaggerToDartGenerator {
     Map<String, dynamic> schema,
     GenerationContext context,
     GenerationStyle style,
-    String? endpoint,
   ) {
     final startMarker = '/*SWAGGER-TO-DART: Fields start*/';
     final stopMarker = '/*SWAGGER-TO-DART: Fields stop*/';
@@ -371,7 +338,6 @@ class SwaggerToDartGenerator {
         schema,
         context,
         style,
-        endpoint,
         _toSnakeCase(enumName),
       );
     }
@@ -390,7 +356,6 @@ class SwaggerToDartGenerator {
     Map<String, dynamic> schema,
     GenerationContext context,
     GenerationStyle style,
-    String? endpoint,
   ) {
     final startMarker = '/*SWAGGER-TO-DART: Fields start*/';
     final stopMarker = '/*SWAGGER-TO-DART: Fields stop*/';
@@ -405,7 +370,6 @@ class SwaggerToDartGenerator {
         schema,
         context,
         style,
-        endpoint,
         _toSnakeCase(className),
       );
     }

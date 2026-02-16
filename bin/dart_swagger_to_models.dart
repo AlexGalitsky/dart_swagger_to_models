@@ -39,11 +39,6 @@ void main(List<String> arguments) async {
       valueHelp: '.',
       defaultsTo: '.',
     )
-    ..addOption(
-      'endpoint',
-      help: 'URL endpoint\'а для маркера /*SWAGGER-TO-DART:{endpoint}*/ и выборочной перегенерации моделей.',
-      valueHelp: 'https://api.example.com/v1/users',
-    )
     ..addFlag(
       'help',
       abbr: 'h',
@@ -72,7 +67,6 @@ void main(List<String> arguments) async {
   final libraryName = argResults['library-name'] as String;
   final styleName = argResults['style'] as String;
   final projectDir = argResults['project-dir'] as String;
-  final endpoint = argResults['endpoint'] as String?;
 
   final style = switch (styleName) {
     'json_serializable' => GenerationStyle.jsonSerializable,
@@ -95,7 +89,6 @@ void main(List<String> arguments) async {
       libraryName: libraryName,
       style: style,
       projectDir: projectDir,
-      endpoint: endpoint,
     );
 
     stdout.writeln('Генерация завершена успешно.');

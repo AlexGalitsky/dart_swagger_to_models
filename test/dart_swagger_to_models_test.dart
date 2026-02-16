@@ -83,7 +83,6 @@ void main() {
         outputDir: '${tempDir.path}/models',
         libraryName: 'api_models',
         projectDir: tempDir.path,
-        endpoint: null,
       );
 
       final statusFile =
@@ -131,7 +130,6 @@ void main() {
         outputDir: '${tempDir.path}/models',
         libraryName: 'api_models',
         projectDir: tempDir.path,
-        endpoint: null,
       );
 
       final productFile =
@@ -188,7 +186,6 @@ void main() {
         outputDir: '${tempDir.path}/models',
         libraryName: 'api_models',
         projectDir: tempDir.path,
-        endpoint: null,
       );
 
       final baseFile =
@@ -240,7 +237,6 @@ void main() {
         outputDir: '${tempDir.path}/models',
         libraryName: 'api_models',
         projectDir: tempDir.path,
-        endpoint: null,
       );
 
       final userFile =
@@ -320,7 +316,6 @@ void main() {
         outputDir: '${tempDir.path}/models',
         libraryName: 'api_models',
         projectDir: tempDir.path,
-        endpoint: null,
       );
 
       final numbersFile =
@@ -362,7 +357,6 @@ void main() {
         libraryName: 'api_models',
         style: GenerationStyle.plainDart,
         projectDir: tempDir.path,
-        endpoint: null,
       );
 
       final userFile =
@@ -404,7 +398,6 @@ void main() {
         libraryName: 'api_models',
         style: GenerationStyle.jsonSerializable,
         projectDir: tempDir.path,
-        endpoint: null,
       );
 
       final userFile =
@@ -453,7 +446,6 @@ void main() {
         libraryName: 'api_models',
         style: GenerationStyle.freezed,
         projectDir: tempDir.path,
-        endpoint: null,
       );
 
       final userFile =
@@ -510,7 +502,6 @@ void main() {
           libraryName: 'models',
           style: GenerationStyle.plainDart,
           projectDir: tempDir.path,
-          endpoint: null,
         );
 
         expect(result.generatedFiles.length, greaterThan(1));
@@ -521,8 +512,7 @@ void main() {
         final userFile =
             result.generatedFiles.firstWhere((f) => f.contains('user.dart'));
         final userContent = await File(userFile).readAsString();
-        // endpoint не задан, поэтому маркер без URL
-        expect(userContent, contains('/*SWAGGER-TO-DART:*/'));
+        expect(userContent, contains('/*SWAGGER-TO-DART*/'));
         expect(userContent, contains('/*SWAGGER-TO-DART: Fields start*/'));
         expect(userContent, contains('/*SWAGGER-TO-DART: Fields stop*/'));
         expect(userContent, contains('class User'));
@@ -537,7 +527,7 @@ void main() {
         // Создаём существующий файл с маркерами
         final existingUserFile = File('${modelsDir.path}/user.dart');
         await existingUserFile.writeAsString('''
-/*SWAGGER-TO-DART:api.example.com*/
+/*SWAGGER-TO-DART*/
 
 import 'package:some_package/some_package.dart';
 
@@ -586,11 +576,10 @@ extension UserExtension on User {
           libraryName: 'models',
           style: GenerationStyle.plainDart,
           projectDir: tempDir.path,
-          endpoint: 'api.example.com',
         );
 
         final updatedContent = await existingUserFile.readAsString();
-        expect(updatedContent, contains('/*SWAGGER-TO-DART:api.example.com*/'));
+        expect(updatedContent, contains('/*SWAGGER-TO-DART*/'));
         expect(updatedContent, contains('import \'package:some_package/some_package.dart\';'));
         expect(updatedContent, contains('void customFunction()'));
         expect(updatedContent, contains('class User'));
@@ -631,13 +620,12 @@ extension UserExtension on User {
           libraryName: 'models',
           style: GenerationStyle.jsonSerializable,
           projectDir: tempDir.path,
-          endpoint: null,
         );
 
         final productFile =
             result.generatedFiles.firstWhere((f) => f.contains('product.dart'));
         final content = await File(productFile).readAsString();
-        expect(content, contains('/*SWAGGER-TO-DART:*/'));
+        expect(content, contains('/*SWAGGER-TO-DART*/'));
         expect(content, contains("import 'package:json_annotation/json_annotation.dart';"));
         expect(content, contains("part 'product.g.dart';"));
         expect(content, contains('@JsonSerializable()'));
@@ -676,13 +664,12 @@ extension UserExtension on User {
           libraryName: 'models',
           style: GenerationStyle.freezed,
           projectDir: tempDir.path,
-          endpoint: null,
         );
 
         final categoryFile =
             result.generatedFiles.firstWhere((f) => f.contains('category.dart'));
         final content = await File(categoryFile).readAsString();
-        expect(content, contains('/*SWAGGER-TO-DART:*/'));
+        expect(content, contains('/*SWAGGER-TO-DART*/'));
         expect(content, contains("import 'package:freezed_annotation/freezed_annotation.dart';"));
         expect(content, contains("part 'category.freezed.dart';"));
         expect(content, contains("part 'category.g.dart';"));
