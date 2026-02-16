@@ -431,5 +431,226 @@ void main() {
       expect(content, contains("part 'api_models.freezed.dart';"));
       expect(content, contains("part 'api_models.g.dart';"));
     });
+
+    group('Режим per-file (2.2)', () {
+      test('создаёт отдельные файлы для каждой модели', () async {
+        final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_test_');
+        final specFile = File('${tempDir.path}/swagger.json');
+
+        final spec = <String, dynamic>{
+          'swagger': '2.0',
+          'info': {
+            'title': 'Test API',
+            'version': '1.0.0',
+          },
+          'paths': <String, dynamic>{},
+          'definitions': <String, dynamic>{
+            'User': {
+              'type': 'object',
+              'required': ['id'],
+              'properties': {
+                'id': {'type': 'integer'},
+                'name': {'type': 'string'},
+              },
+            },
+            'Order': {
+              'type': 'object',
+              'properties': {
+                'id': {'type': 'integer'},
+                'total': {'type': 'number'},
+              },
+            },
+          },
+        };
+
+        await specFile.writeAsString(jsonEncode(spec));
+
+        final result = await SwaggerToDartGenerator.generateModels(
+          input: specFile.path,
+          outputDir: '${tempDir.path}/models',
+          libraryName: 'models',
+          style: GenerationStyle.plainDart,
+          perFile: true,
+          projectDir: tempDir.path,
+          endpoint: 'api.example.com',
+        );
+
+        expect(result.generatedFiles.length, greaterThan(1));
+        expect(result.generatedFiles.any((f) => f.contains('user.dart')), isTrue);
+        expect(result.generatedFiles.any((f) => f.contains('order.dart')), isTrue);
+
+        // Проверяем содержимое файла user.dart
+        final userFile = result.generatedFiles.firstWhere((f) => f.contains('user.dart'));
+        final userContent = await File(userFile).readAsString();
+        expect(userContent, contains('/*SWAGGER-TO-DART:api.example.com*/'));
+        expect(userContent, contains('/*SWAGGER-TO-DART: Fields start*/'));
+        expect(userContent, contains('/*SWAGGER-TO-DART: Fields stop*/'));
+        expect(userContent, contains('class User'));
+      });
+
+      test('обновляет существующий файл, сохраняя содержимое вне маркеров', () async {
+        final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_test_');
+        final specFile = File('${tempDir.path}/swagger.json');
+        final modelsDir = Directory('${tempDir.path}/models');
+        await modelsDir.create(recursive: true);
+
+        // Создаём существующий файл с маркерами
+        final existingUserFile = File('${modelsDir.path}/user.dart');
+        await existingUserFile.writeAsString('''
+/*SWAGGER-TO-DART:api.example.com*/
+
+import 'package:some_package/some_package.dart';
+
+// Кастомный код до маркеров
+void customFunction() {
+  print('Custom code');
+}
+
+/*SWAGGER-TO-DART: Fields start*/
+// Старое содержимое, которое будет заменено
+class OldUser {
+  final String oldField;
+}
+/*SWAGGER-TO-DART: Fields stop*/
+
+// Кастомный код после маркеров
+extension UserExtension on User {
+  String get displayName => name ?? 'Unknown';
+}
+''');
+
+        final spec = <String, dynamic>{
+          'swagger': '2.0',
+          'info': {
+            'title': 'Test API',
+            'version': '1.0.0',
+          },
+          'paths': <String, dynamic>{},
+          'definitions': <String, dynamic>{
+            'User': {
+              'type': 'object',
+              'required': ['id'],
+              'properties': {
+                'id': {'type': 'integer'},
+                'name': {'type': 'string'},
+              },
+            },
+          },
+        };
+
+        await specFile.writeAsString(jsonEncode(spec));
+
+        final result = await SwaggerToDartGenerator.generateModels(
+          input: specFile.path,
+          outputDir: modelsDir.path,
+          libraryName: 'models',
+          style: GenerationStyle.plainDart,
+          perFile: true,
+          projectDir: tempDir.path,
+          endpoint: 'api.example.com',
+        );
+
+        final updatedContent = await existingUserFile.readAsString();
+        expect(updatedContent, contains('/*SWAGGER-TO-DART:api.example.com*/'));
+        expect(updatedContent, contains('import \'package:some_package/some_package.dart\';'));
+        expect(updatedContent, contains('void customFunction()'));
+        expect(updatedContent, contains('class User'));
+        expect(updatedContent, contains('final int id;'));
+        expect(updatedContent, contains('final String? name;'));
+        expect(updatedContent, contains('extension UserExtension'));
+        expect(updatedContent, isNot(contains('class OldUser')));
+        expect(updatedContent, isNot(contains('oldField')));
+      });
+
+      test('поддерживает json_serializable в режиме per-file', () async {
+        final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_test_');
+        final specFile = File('${tempDir.path}/swagger.json');
+
+        final spec = <String, dynamic>{
+          'swagger': '2.0',
+          'info': {
+            'title': 'Test API',
+            'version': '1.0.0',
+          },
+          'paths': <String, dynamic>{},
+          'definitions': <String, dynamic>{
+            'Product': {
+              'type': 'object',
+              'properties': {
+                'id': {'type': 'integer'},
+                'name': {'type': 'string'},
+              },
+            },
+          },
+        };
+
+        await specFile.writeAsString(jsonEncode(spec));
+
+        final result = await SwaggerToDartGenerator.generateModels(
+          input: specFile.path,
+          outputDir: '${tempDir.path}/models',
+          libraryName: 'models',
+          style: GenerationStyle.jsonSerializable,
+          perFile: true,
+          projectDir: tempDir.path,
+          endpoint: 'api.example.com',
+        );
+
+        final productFile = result.generatedFiles.firstWhere((f) => f.contains('product.dart'));
+        final content = await File(productFile).readAsString();
+        expect(content, contains('/*SWAGGER-TO-DART:api.example.com*/'));
+        expect(content, contains("import 'package:json_annotation/json_annotation.dart';"));
+        expect(content, contains("part 'product.g.dart';"));
+        expect(content, contains('@JsonSerializable()'));
+        expect(content, contains('class Product'));
+        expect(content, contains('_\$ProductFromJson'));
+        expect(content, contains('_\$ProductToJson'));
+      });
+
+      test('поддерживает freezed в режиме per-file', () async {
+        final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_test_');
+        final specFile = File('${tempDir.path}/swagger.json');
+
+        final spec = <String, dynamic>{
+          'swagger': '2.0',
+          'info': {
+            'title': 'Test API',
+            'version': '1.0.0',
+          },
+          'paths': <String, dynamic>{},
+          'definitions': <String, dynamic>{
+            'Category': {
+              'type': 'object',
+              'properties': {
+                'id': {'type': 'integer'},
+                'name': {'type': 'string'},
+              },
+            },
+          },
+        };
+
+        await specFile.writeAsString(jsonEncode(spec));
+
+        final result = await SwaggerToDartGenerator.generateModels(
+          input: specFile.path,
+          outputDir: '${tempDir.path}/models',
+          libraryName: 'models',
+          style: GenerationStyle.freezed,
+          perFile: true,
+          projectDir: tempDir.path,
+          endpoint: 'api.example.com',
+        );
+
+        final categoryFile = result.generatedFiles.firstWhere((f) => f.contains('category.dart'));
+        final content = await File(categoryFile).readAsString();
+        expect(content, contains('/*SWAGGER-TO-DART:api.example.com*/'));
+        expect(content, contains("import 'package:freezed_annotation/freezed_annotation.dart';"));
+        expect(content, contains("part 'category.freezed.dart';"));
+        expect(content, contains("part 'category.g.dart';"));
+        expect(content, contains('@freezed'));
+        expect(content, contains('class Category with _\$Category'));
+        expect(content, contains('const factory Category'));
+      });
+    });
   });
 }

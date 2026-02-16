@@ -34,6 +34,22 @@ void main(List<String> arguments) async {
       defaultsTo: 'plain_dart',
     )
     ..addFlag(
+      'per-file',
+      help: 'Режим генерации: одна модель = один файл (режим 2.2).',
+      defaultsTo: false,
+    )
+    ..addOption(
+      'project-dir',
+      help: 'Корневая директория проекта для сканирования Dart файлов (используется с --per-file).',
+      valueHelp: '.',
+      defaultsTo: '.',
+    )
+    ..addOption(
+      'endpoint',
+      help: 'Адрес endpoint для маркера /*SWAGGER-TO-DART:{endpoint}*/ (используется с --per-file).',
+      valueHelp: 'api.example.com',
+    )
+    ..addFlag(
       'help',
       abbr: 'h',
       negatable: false,
@@ -60,6 +76,9 @@ void main(List<String> arguments) async {
   final outputDir = argResults['output-dir'] as String;
   final libraryName = argResults['library-name'] as String;
   final styleName = argResults['style'] as String;
+  final perFile = argResults['per-file'] as bool;
+  final projectDir = argResults['project-dir'] as String;
+  final endpoint = argResults['endpoint'] as String?;
 
   final style = switch (styleName) {
     'json_serializable' => GenerationStyle.jsonSerializable,
@@ -75,12 +94,23 @@ void main(List<String> arguments) async {
     return;
   }
 
+  if (perFile && endpoint == null) {
+    stderr.writeln('При использовании --per-file необходимо указать --endpoint.');
+    stderr.writeln();
+    _printUsage(parser);
+    exitCode = 64;
+    return;
+  }
+
   try {
     final result = await SwaggerToDartGenerator.generateModels(
       input: input,
       outputDir: outputDir,
       libraryName: libraryName,
       style: style,
+      perFile: perFile,
+      projectDir: perFile ? projectDir : null,
+      endpoint: perFile ? endpoint! : null,
     );
 
     stdout.writeln('Генерация завершена успешно.');

@@ -157,11 +157,17 @@ class SwaggerToDartGenerator {
   /// [outputDir] — директория, куда будут записаны модели (по умолчанию `lib/models`).
   /// [libraryName] — имя библиотеки/файла без расширения (по умолчанию `models`).
   /// [style] — стиль генерации моделей (plain_dart/json_serializable/freezed).
+  /// [perFile] — режим генерации: одна модель = один файл (режим 2.2).
+  /// [projectDir] — корневая директория проекта для сканирования Dart файлов (используется с [perFile]).
+  /// [endpoint] — адрес endpoint для маркера /*SWAGGER-TO-DART:{endpoint}*/ (используется с [perFile]).
   static Future<GenerationResult> generateModels({
     required String input,
     String outputDir = 'lib/models',
     String libraryName = 'models',
     GenerationStyle style = GenerationStyle.plainDart,
+    bool perFile = false,
+    String? projectDir,
+    String? endpoint,
   }) async {
     final spec = await loadSpec(input);
     final version = detectVersion(spec);
@@ -178,6 +184,23 @@ class SwaggerToDartGenerator {
       version: version,
     );
 
+    if (perFile) {
+      if (projectDir == null || endpoint == null) {
+        throw Exception(
+          'При использовании режима per-file необходимо указать projectDir и endpoint.',
+        );
+      }
+      return await _generateModelsPerFile(
+        schemas: schemas,
+        context: context,
+        style: style,
+        outputDir: outputDir,
+        projectDir: projectDir,
+        endpoint: endpoint,
+      );
+    }
+
+    // Старый режим: один файл
     final imports = <String>[];
     final parts = <String>[];
 
@@ -260,6 +283,328 @@ class SwaggerToDartGenerator {
       outputDirectory: outputDir,
       generatedFiles: [filePath],
     );
+  }
+
+  /// Генерирует модели в режиме per-file (одна модель = один файл).
+  static Future<GenerationResult> _generateModelsPerFile({
+    required Map<String, dynamic> schemas,
+    required GenerationContext context,
+    required GenerationStyle style,
+    required String outputDir,
+    required String projectDir,
+    required String endpoint,
+  }) async {
+    final generatedFiles = <String>[];
+    final outDir = Directory(outputDir);
+    if (!await outDir.exists()) {
+      await outDir.create(recursive: true);
+    }
+
+    // Сканируем проект для поиска существующих файлов с маркерами
+    final existingFiles = await _scanProjectForMarkers(projectDir, outputDir, endpoint);
+
+    // Сначала генерируем enum'ы
+    final enumSchemas = <String, Map<String, dynamic>>{};
+    schemas.forEach((name, schema) {
+      final schemaMap = (schema ?? {}) as Map<String, dynamic>;
+      if (context.isEnum(schemaMap)) {
+        enumSchemas[name] = schemaMap;
+      }
+    });
+
+    // Генерируем enum'ы в отдельные файлы
+    for (final entry in enumSchemas.entries) {
+      final fileName = _toSnakeCase(entry.key);
+      final filePath = p.join(outputDir, '$fileName.dart');
+      final existingContent = existingFiles[entry.key];
+
+      final fileContent = existingContent != null
+          ? _updateExistingFileWithEnum(
+              existingContent,
+              entry.key,
+              entry.value,
+              context,
+              endpoint,
+            )
+          : _createNewFileWithEnum(
+              entry.key,
+              entry.value,
+              context,
+              style,
+              endpoint,
+              fileName,
+            );
+
+      final file = File(filePath);
+      await file.writeAsString(fileContent);
+      generatedFiles.add(filePath);
+      context.generatedEnums.add(_toPascalCase(entry.key));
+    }
+
+    // Затем генерируем классы в отдельные файлы
+    for (final entry in schemas.entries) {
+      final schemaMap = (entry.value ?? {}) as Map<String, dynamic>;
+      if (!context.isEnum(schemaMap)) {
+        final fileName = _toSnakeCase(entry.key);
+        final filePath = p.join(outputDir, '$fileName.dart');
+        final existingContent = existingFiles[entry.key];
+
+        final fileContent = existingContent != null
+            ? _updateExistingFileWithClass(
+                existingContent,
+                entry.key,
+                schemaMap,
+                context,
+                style,
+                endpoint,
+              )
+            : _createNewFileWithClass(
+                entry.key,
+                schemaMap,
+                context,
+                style,
+                endpoint,
+                fileName,
+              );
+
+        final file = File(filePath);
+        await file.writeAsString(fileContent);
+        generatedFiles.add(filePath);
+        context.generatedClasses.add(_toPascalCase(entry.key));
+      }
+    }
+
+    return GenerationResult(
+      outputDirectory: outputDir,
+      generatedFiles: generatedFiles,
+    );
+  }
+
+  /// Сканирует проект для поиска Dart файлов с маркерами.
+  static Future<Map<String, String>> _scanProjectForMarkers(
+    String projectDir,
+    String outputDir,
+    String endpoint,
+  ) async {
+    final result = <String, String>{};
+    final markerPattern = RegExp(r'/\*SWAGGER-TO-DART:([^*]+)\*/');
+
+    // Сначала сканируем outputDir
+    final outputDirectory = Directory(outputDir);
+    if (await outputDirectory.exists()) {
+      await for (final entity in outputDirectory.list(recursive: false)) {
+        if (entity is File && entity.path.endsWith('.dart')) {
+          try {
+            final content = await entity.readAsString();
+            final match = markerPattern.firstMatch(content);
+            if (match != null) {
+              final markerEndpoint = match.group(1)?.trim();
+              if (markerEndpoint == endpoint) {
+                // Извлекаем имя модели из имени файла
+                final fileName = p.basenameWithoutExtension(entity.path);
+                final modelName = _toPascalCase(fileName);
+                result[modelName] = content;
+              }
+            }
+          } catch (e) {
+            // Игнорируем ошибки чтения файлов
+          }
+        }
+      }
+    }
+
+    // Затем сканируем projectDir (рекурсивно)
+    final projectDirectory = Directory(projectDir);
+    if (await projectDirectory.exists()) {
+      await for (final entity in projectDirectory.list(recursive: true)) {
+        if (entity is File && entity.path.endsWith('.dart')) {
+          // Пропускаем файлы из outputDir, так как мы их уже проверили
+          if (p.isWithin(outputDir, entity.path)) {
+            continue;
+          }
+          try {
+            final content = await entity.readAsString();
+            final match = markerPattern.firstMatch(content);
+            if (match != null) {
+              final markerEndpoint = match.group(1)?.trim();
+              if (markerEndpoint == endpoint) {
+                // Извлекаем имя модели из имени файла или содержимого
+                final fileName = p.basenameWithoutExtension(entity.path);
+                final modelName = _toPascalCase(fileName);
+                // Не перезаписываем, если уже есть в outputDir
+                if (!result.containsKey(modelName)) {
+                  result[modelName] = content;
+                }
+              }
+            }
+          } catch (e) {
+            // Игнорируем ошибки чтения файлов
+          }
+        }
+      }
+    }
+
+    return result;
+  }
+
+  /// Создаёт новый файл с enum.
+  static String _createNewFileWithEnum(
+    String enumName,
+    Map<String, dynamic> schema,
+    GenerationContext context,
+    GenerationStyle style,
+    String endpoint,
+    String fileName,
+  ) {
+    final buffer = StringBuffer();
+    buffer.writeln('/*SWAGGER-TO-DART:$endpoint*/');
+    buffer.writeln();
+
+    // Добавляем импорты и part'ы в зависимости от стиля
+    switch (style) {
+      case GenerationStyle.plainDart:
+        break;
+      case GenerationStyle.jsonSerializable:
+        buffer.writeln("import 'package:json_annotation/json_annotation.dart';");
+        buffer.writeln("part '$fileName.g.dart';");
+        buffer.writeln();
+        break;
+      case GenerationStyle.freezed:
+        buffer.writeln("import 'package:freezed_annotation/freezed_annotation.dart';");
+        buffer.writeln("part '$fileName.freezed.dart';");
+        buffer.writeln("part '$fileName.g.dart';");
+        buffer.writeln();
+        break;
+    }
+
+    buffer.writeln('/*SWAGGER-TO-DART: Fields start*/');
+    buffer.writeln();
+    buffer.write(_generateEnum(enumName, schema, context));
+    buffer.writeln();
+    buffer.writeln('/*SWAGGER-TO-DART: Fields stop*/');
+
+    return buffer.toString();
+  }
+
+  /// Создаёт новый файл с классом.
+  static String _createNewFileWithClass(
+    String className,
+    Map<String, dynamic> schema,
+    GenerationContext context,
+    GenerationStyle style,
+    String endpoint,
+    String fileName,
+  ) {
+    final buffer = StringBuffer();
+    buffer.writeln('/*SWAGGER-TO-DART:$endpoint*/');
+    buffer.writeln();
+
+    // Добавляем импорты и part'ы в зависимости от стиля
+    switch (style) {
+      case GenerationStyle.plainDart:
+        break;
+      case GenerationStyle.jsonSerializable:
+        buffer.writeln("import 'package:json_annotation/json_annotation.dart';");
+        buffer.writeln("part '$fileName.g.dart';");
+        buffer.writeln();
+        break;
+      case GenerationStyle.freezed:
+        buffer.writeln("import 'package:freezed_annotation/freezed_annotation.dart';");
+        buffer.writeln("part '$fileName.freezed.dart';");
+        buffer.writeln("part '$fileName.g.dart';");
+        buffer.writeln();
+        break;
+    }
+
+    buffer.writeln('/*SWAGGER-TO-DART: Fields start*/');
+    buffer.writeln();
+    buffer.write(_generateClass(className, schema, context, style));
+    buffer.writeln();
+    buffer.writeln('/*SWAGGER-TO-DART: Fields stop*/');
+
+    return buffer.toString();
+  }
+
+  /// Обновляет существующий файл с enum, заменяя содержимое между маркерами.
+  static String _updateExistingFileWithEnum(
+    String existingContent,
+    String enumName,
+    Map<String, dynamic> schema,
+    GenerationContext context,
+    String endpoint,
+  ) {
+    final startMarker = '/*SWAGGER-TO-DART: Fields start*/';
+    final stopMarker = '/*SWAGGER-TO-DART: Fields stop*/';
+
+    final startIndex = existingContent.indexOf(startMarker);
+    final stopIndex = existingContent.indexOf(stopMarker);
+
+    if (startIndex == -1 || stopIndex == -1 || startIndex >= stopIndex) {
+      // Маркеры не найдены, создаём новый файл
+      return _createNewFileWithEnum(
+        enumName,
+        schema,
+        context,
+        GenerationStyle.plainDart,
+        endpoint,
+        _toSnakeCase(enumName),
+      );
+    }
+
+    final before = existingContent.substring(0, startIndex + startMarker.length);
+    final after = existingContent.substring(stopIndex);
+    final newEnumCode = _generateEnum(enumName, schema, context);
+
+    return '$before\n$newEnumCode\n$after';
+  }
+
+  /// Обновляет существующий файл с классом, заменяя содержимое между маркерами.
+  static String _updateExistingFileWithClass(
+    String existingContent,
+    String className,
+    Map<String, dynamic> schema,
+    GenerationContext context,
+    GenerationStyle style,
+    String endpoint,
+  ) {
+    final startMarker = '/*SWAGGER-TO-DART: Fields start*/';
+    final stopMarker = '/*SWAGGER-TO-DART: Fields stop*/';
+
+    final startIndex = existingContent.indexOf(startMarker);
+    final stopIndex = existingContent.indexOf(stopMarker);
+
+    if (startIndex == -1 || stopIndex == -1 || startIndex >= stopIndex) {
+      // Маркеры не найдены, создаём новый файл
+      return _createNewFileWithClass(
+        className,
+        schema,
+        context,
+        style,
+        endpoint,
+        _toSnakeCase(className),
+      );
+    }
+
+    final before = existingContent.substring(0, startIndex + startMarker.length);
+    final after = existingContent.substring(stopIndex);
+    final newClassCode = _generateClass(className, schema, context, style);
+
+    return '$before\n$newClassCode\n$after';
+  }
+
+  /// Преобразует имя в snake_case для имени файла.
+  static String _toSnakeCase(String name) {
+    final pascal = _toPascalCase(name);
+    if (pascal.isEmpty) return '';
+    final buffer = StringBuffer();
+    for (var i = 0; i < pascal.length; i++) {
+      final char = pascal[i];
+      if (char == char.toUpperCase() && i > 0) {
+        buffer.write('_');
+      }
+      buffer.write(char.toLowerCase());
+    }
+    return buffer.toString();
   }
 
   static Map<String, dynamic> _getAllSchemas(
@@ -460,7 +805,6 @@ class SwaggerToDartGenerator {
         fields.forEach((propName, data) {
           final propSchema = data['schema'] as Map<String, dynamic>;
           final isRequired = data['required'] as bool;
-          final type = _dartTypeForSchema(propSchema, context, required: isRequired);
           final fieldName = _toCamelCase(propName);
           final prefix = isRequired ? 'required ' : '';
           classBuffer.writeln('    $prefix this.$fieldName,');
@@ -519,7 +863,6 @@ class SwaggerToDartGenerator {
         fields.forEach((propName, data) {
           final propSchema = data['schema'] as Map<String, dynamic>;
           final isRequired = data['required'] as bool;
-          final type = _dartTypeForSchema(propSchema, context, required: isRequired);
           final fieldName = _toCamelCase(propName);
           final prefix = isRequired ? 'required ' : '';
           classBuffer.writeln('    $prefix this.$fieldName,');

@@ -44,6 +44,9 @@ dart run dart_swagger_to_models:dart_swagger_to_models \
   - `plain_dart` — простые Dart классы с ручным `fromJson`/`toJson` (по умолчанию),
   - `json_serializable` — классы с `@JsonSerializable()` и делегацией в `_$ClassFromJson`/`_$ClassToJson`,
   - `freezed` — иммутабельные классы `@freezed` с `const factory` и `fromJson`.
+- **`--per-file`**: режим генерации: одна модель = один файл (режим 2.2). При использовании требуется `--endpoint`.
+- **`--project-dir`**: корневая директория проекта для сканирования Dart файлов (используется с `--per-file`, по умолчанию `.`).
+- **`--endpoint`**: адрес endpoint для маркера `/*SWAGGER-TO-DART:{endpoint}*/` (используется с `--per-file`, обязательный при `--per-file`).
 - **`--help`, `-h`**: показать помощь.
 
 ### Пример результата
@@ -69,9 +72,59 @@ definitions:
 будет сгенерирован Dart-класс `User` с обязательными полями `id`, `name`
 и опциональным `email`, а также методами `fromJson` и `toJson`.
 
+### Режим per-file (2.2)
+
+При использовании флага `--per-file` генератор создаёт отдельный файл для каждой модели:
+
+```bash
+dart run dart_swagger_to_models:dart_swagger_to_models \
+  --input api.yaml \
+  --output-dir lib/models \
+  --style plain_dart \
+  --per-file \
+  --project-dir . \
+  --endpoint api.example.com
+```
+
+**Особенности режима per-file:**
+
+- **Одна модель = один файл**: каждая схема из Swagger/OpenAPI генерируется в отдельный файл (например, `user.dart`, `order.dart`).
+- **Маркеры для идентификации**: каждый файл начинается с маркера `/*SWAGGER-TO-DART:{endpoint}*/`.
+- **Интеграция с существующим кодом**: генератор сканирует проект и обновляет существующие файлы с соответствующими маркерами.
+- **Сохранение кастомного кода**: содержимое между маркерами `/*SWAGGER-TO-DART: Fields start*/` и `/*SWAGGER-TO-DART: Fields stop*/` заменяется, всё остальное сохраняется (импорты, методы, расширения и т.д.).
+
+**Пример существующего файла:**
+
+```dart
+/*SWAGGER-TO-DART:api.example.com*/
+
+import 'package:some_package/some_package.dart';
+
+// Кастомный код до маркеров
+void customFunction() {
+  print('Custom code');
+}
+
+/*SWAGGER-TO-DART: Fields start*/
+// Здесь будет сгенерированный класс
+class User {
+  final int id;
+  final String? name;
+  // ...
+}
+/*SWAGGER-TO-DART: Fields stop*/
+
+// Кастомный код после маркеров
+extension UserExtension on User {
+  String get displayName => name ?? 'Unknown';
+}
+```
+
+При повторной генерации содержимое между маркерами будет обновлено, а кастомный код сохранён.
+
 ### Ограничения и упрощения
 
 - Схемы обрабатываются на уровне верхних сущностей (`definitions` / `components.schemas`).
-- Наследование (`allOf`, `oneOf`, `anyOf`) и сложные комбинации пока не поддерживаются.
 - `$ref` на другие схемы разрешаются в типы Dart-классов.
+- Режим per-file поддерживает все три стиля генерации (`plain_dart`, `json_serializable`, `freezed`).
 
