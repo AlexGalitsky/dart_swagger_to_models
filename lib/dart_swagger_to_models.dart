@@ -649,7 +649,6 @@ class SwaggerToDartGenerator {
     final className = _toPascalCase(name);
     final properties = schema['properties'] as Map<String, dynamic>? ?? {};
     final requiredProps = (schema['required'] as List?)?.cast<String>() ?? const <String>[];
-    final nullable = schema['nullable'] as bool? ?? false;
     final additionalProps = schema['additionalProperties'];
 
     // Если объект только с additionalProperties и без properties — генерируем
@@ -667,7 +666,7 @@ class SwaggerToDartGenerator {
         ..writeln('  factory $className.fromJson(Map<String, dynamic> json) {')
         ..writeln('    return $className(');
       if (additionalProps is Map<String, dynamic>) {
-        final valueExpr = _fromJsonExpression('v', additionalProps, context);
+        final valueExpr = _fromJsonExpression('v', additionalProps, context, isRequired: true);
         classBuffer.writeln('      data: json.map((k, v) => MapEntry(k, $valueExpr)),');
       } else {
         classBuffer.writeln('      data: json.map((k, v) => MapEntry(k, v)),');
@@ -690,13 +689,18 @@ class SwaggerToDartGenerator {
       final propSchema = (propSchemaRaw ?? {}) as Map<String, dynamic>;
       final isRequired = requiredProps.contains(propName);
       final propNullable = propSchema['nullable'] as bool? ?? false;
-      final isActuallyRequired = isRequired && !propNullable && !nullable;
+      
+      // Поле non-nullable только если:
+      // 1. Оно в списке required И
+      // 2. Оно явно не помечено как nullable: true
+      // В противном случае поле nullable (опциональное)
+      final isNonNullable = isRequired && !propNullable;
 
-      final dartType = _dartTypeForSchema(propSchema, context, required: isActuallyRequired);
+      final dartType = _dartTypeForSchema(propSchema, context, required: isNonNullable);
       fieldInfos[propName] = FieldInfo(
         name: propName,
         dartType: dartType,
-        isRequired: isActuallyRequired,
+        isRequired: isNonNullable,
         schema: propSchema,
       );
     });
@@ -706,7 +710,12 @@ class SwaggerToDartGenerator {
     return strategy.generateFullClass(
       className,
       fieldInfos,
-      (jsonKey, schema) => _fromJsonExpression('json[\'$jsonKey\']', schema, context),
+      (jsonKey, schema) {
+        // Определяем, является ли поле required на основе FieldInfo
+        final fieldInfo = fieldInfos[jsonKey];
+        final isRequired = fieldInfo?.isRequired ?? false;
+        return _fromJsonExpression('json[\'$jsonKey\']', schema, context, isRequired: isRequired);
+      },
       (fieldName, schema) => _toJsonExpression(fieldName, schema, context),
     );
   }
@@ -835,7 +844,6 @@ class $className {
 
     final type = schema['type'] as String?;
     final format = schema['format'] as String?;
-    final nullable = schema['nullable'] as bool? ?? false;
 
     String base;
     switch (type) {
@@ -883,15 +891,20 @@ class $className {
         base = 'dynamic';
     }
 
-    final isActuallyRequired = required && !nullable;
-    return isActuallyRequired ? base : '$base?';
+    // Поле non-nullable только если required=true И nullable=false
+    // required уже учитывает nullable из схемы, поэтому просто используем required
+    return required ? base : '$base?';
   }
 
   static String _fromJsonExpression(
     String source,
     Map<String, dynamic> schema,
-    GenerationContext context,
-  ) {
+    GenerationContext context, {
+    bool isRequired = false,
+  }) {
+    final nullable = schema['nullable'] as bool? ?? false;
+    final isNonNullable = isRequired && !nullable;
+
     // Обработка $ref
     final ref = schema[r'$ref'] as String?;
     if (ref != null) {
@@ -900,15 +913,24 @@ class $className {
         if (context.isEnum(refSchema)) {
           final enumName = context.getEnumTypeName(refSchema, ref.split('/').last);
           if (enumName != null) {
+            if (isNonNullable) {
+              return '$enumName.fromJson($source)!';
+            }
             return '$enumName.fromJson($source)';
           }
         }
         final refName = ref.split('/').last;
         final type = _toPascalCase(refName);
+        if (isNonNullable) {
+          return '$type.fromJson($source as Map<String, dynamic>)';
+        }
         return '$source == null ? null : $type.fromJson($source as Map<String, dynamic>)';
       }
       final refName = ref.split('/').last;
       final type = _toPascalCase(refName);
+      if (isNonNullable) {
+        return '$type.fromJson($source as Map<String, dynamic>)';
+      }
       return '$source == null ? null : $type.fromJson($source as Map<String, dynamic>)';
     }
 
@@ -916,48 +938,63 @@ class $className {
     if (context.isEnum(schema)) {
       final enumName = context.getEnumTypeName(schema, null);
       if (enumName != null) {
+        if (isNonNullable) {
+          return '$enumName.fromJson($source)!';
+        }
         return '$enumName.fromJson($source)';
       }
     }
 
     final type = schema['type'] as String?;
     final format = schema['format'] as String?;
-    final nullable = schema['nullable'] as bool? ?? false;
 
     switch (type) {
       case 'array':
         final items = (schema['items'] ?? {}) as Map<String, dynamic>;
-        final itemExpr = _fromJsonExpression('e', items, context);
-        if (nullable) {
-          return '$source == null ? null : ($source as List<dynamic>).map((e) => $itemExpr).toList()';
-        } else {
-          return '($source as List<dynamic>?)?.map((e) => $itemExpr).toList() ?? []';
+        final itemExpr = _fromJsonExpression('e', items, context, isRequired: true);
+        if (isNonNullable) {
+          return '($source as List<dynamic>).map((e) => $itemExpr).toList()';
         }
+        return '$source == null ? null : ($source as List<dynamic>).map((e) => $itemExpr).toList()';
       case 'string':
         if (format == 'date-time' || format == 'date') {
-          return nullable
-              ? '$source == null ? null : DateTime.parse($source as String)'
-              : '$source == null ? null : DateTime.parse($source as String)';
+          if (isNonNullable) {
+            return 'DateTime.parse($source as String)';
+          }
+          return '$source == null ? null : DateTime.parse($source as String)';
+        }
+        if (isNonNullable) {
+          return '$source as String';
         }
         return '$source as String?';
       case 'integer':
-        return nullable
-            ? '$source == null ? null : ($source as num?)?.toInt()'
-            : '($source as num?)?.toInt()';
+        if (isNonNullable) {
+          return '($source as num).toInt()';
+        }
+        return '$source == null ? null : ($source as num?)?.toInt()';
       case 'number':
+        if (isNonNullable) {
+          return '$source as num';
+        }
         return '$source as num?';
       case 'boolean':
+        if (isNonNullable) {
+          return '$source as bool';
+        }
         return '$source as bool?';
       case 'object':
         final additionalProps = schema['additionalProperties'];
         if (additionalProps != null && additionalProps != false) {
           if (additionalProps is Map<String, dynamic>) {
-            final valueType = _dartTypeForSchema(additionalProps, context, required: true);
-            final valueExpr = _fromJsonExpression('v', additionalProps, context);
-            return nullable
-                ? '$source == null ? null : ($source as Map<String, dynamic>).map((k, v) => MapEntry(k, $valueExpr))'
-                : '($source as Map<String, dynamic>?)?.map((k, v) => MapEntry(k, $valueExpr)) ?? <String, $valueType>{}';
+            final valueExpr = _fromJsonExpression('v', additionalProps, context, isRequired: true);
+            if (isNonNullable) {
+              return '($source as Map<String, dynamic>).map((k, v) => MapEntry(k, $valueExpr))';
+            }
+            return '$source == null ? null : ($source as Map<String, dynamic>).map((k, v) => MapEntry(k, $valueExpr))';
           }
+        }
+        if (isNonNullable) {
+          return '$source as Map<String, dynamic>';
         }
         return '$source as Map<String, dynamic>?';
       default:
