@@ -11,7 +11,8 @@ import 'package:test/test.dart';
 void main() {
   group('Pluggable styles (0.3.1)', () {
     test('can register and use custom style', () async {
-      final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_custom_style_');
+      final tempDir = await Directory.systemTemp
+          .createTemp('dart_swagger_to_models_custom_style_');
       final specFile = File('${tempDir.path}/openapi.json');
 
       final spec = <String, dynamic>{
@@ -54,7 +55,8 @@ void main() {
         );
 
         expect(result2.generatedFiles.length, equals(1));
-        final userFile = result2.generatedFiles.firstWhere((f) => f.contains('user.dart'));
+        final userFile =
+            result2.generatedFiles.firstWhere((f) => f.contains('user.dart'));
         final content = await File(userFile).readAsString();
         expect(content, contains('class User'));
       } finally {
@@ -63,7 +65,8 @@ void main() {
     });
 
     test('throws error when using unregistered style', () async {
-      final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_unregistered_style_');
+      final tempDir = await Directory.systemTemp
+          .createTemp('dart_swagger_to_models_unregistered_style_');
       final specFile = File('${tempDir.path}/openapi.json');
 
       final spec = <String, dynamic>{
@@ -104,7 +107,8 @@ void main() {
     });
 
     test('supports custom style via CLI', () async {
-      final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_cli_custom_style_');
+      final tempDir = await Directory.systemTemp
+          .createTemp('dart_swagger_to_models_cli_custom_style_');
       final specFile = File('${tempDir.path}/openapi.json');
 
       final spec = <String, dynamic>{
@@ -147,7 +151,8 @@ void main() {
     });
 
     test('supports custom style via config file', () async {
-      final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_config_custom_style_');
+      final tempDir = await Directory.systemTemp
+          .createTemp('dart_swagger_to_models_config_custom_style_');
       final specFile = File('${tempDir.path}/openapi.json');
       final configFile = File('${tempDir.path}/dart_swagger_to_models.yaml');
 
@@ -177,7 +182,8 @@ defaultStyle: config_test_style
       StyleRegistry.register('config_test_style', () => PlainDartGenerator());
 
       try {
-        final config = await ConfigLoader.loadConfig(configFile.path, tempDir.path);
+        final config =
+            await ConfigLoader.loadConfig(configFile.path, tempDir.path);
         expect(config.customStyleName, equals('config_test_style'));
 
         final result = await SwaggerToDartGenerator.generateModels(

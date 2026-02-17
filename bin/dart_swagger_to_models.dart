@@ -29,20 +29,23 @@ void main(List<String> arguments) async {
     ..addOption(
       'style',
       abbr: 's',
-      help: 'Model generation style: plain_dart, json_serializable, or freezed.',
+      help:
+          'Model generation style: plain_dart, json_serializable, or freezed.',
       valueHelp: 'plain_dart',
       allowed: ['plain_dart', 'json_serializable', 'freezed'],
     )
     ..addOption(
       'project-dir',
-      help: 'Project root directory for scanning Dart files (search for existing models).',
+      help:
+          'Project root directory for scanning Dart files (search for existing models).',
       valueHelp: '.',
       defaultsTo: '.',
     )
     ..addOption(
       'config',
       abbr: 'c',
-      help: 'Path to configuration file (default: searches for dart_swagger_to_models.yaml in project root).',
+      help:
+          'Path to configuration file (default: searches for dart_swagger_to_models.yaml in project root).',
       valueHelp: 'dart_swagger_to_models.yaml',
     )
     ..addFlag(
@@ -144,7 +147,8 @@ void main(List<String> arguments) async {
     Config? config;
     try {
       config = await ConfigLoader.loadConfig(configPath, projectDir);
-      Logger.verbose('Configuration loaded from ${configPath ?? 'dart_swagger_to_models.yaml'}');
+      Logger.verbose(
+          'Configuration loaded from ${configPath ?? 'dart_swagger_to_models.yaml'}');
     } catch (e) {
       Logger.warning('Failed to load configuration: $e');
       // Continue without configuration
@@ -249,10 +253,12 @@ void _printSummary(GenerationResult result) {
 }
 
 void _printUsage(ArgParser parser) {
-  stdout.writeln('dart_swagger_to_models — Generate Dart models from Swagger/OpenAPI');
+  stdout.writeln(
+      'dart_swagger_to_models — Generate Dart models from Swagger/OpenAPI');
   stdout.writeln();
   stdout.writeln('Usage:');
-  stdout.writeln('  dart run dart_swagger_to_models:dart_swagger_to_models --input api.yaml');
+  stdout.writeln(
+      '  dart run dart_swagger_to_models:dart_swagger_to_models --input api.yaml');
   stdout.writeln();
   stdout.writeln('Options:');
   stdout.writeln(parser.usage);

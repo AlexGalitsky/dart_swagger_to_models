@@ -16,8 +16,10 @@ abstract class ClassGeneratorStrategy {
   String generateFullClass(
     String className,
     Map<String, FieldInfo> fields,
-    String Function(String jsonKey, Map<String, dynamic> schema) fromJsonExpression,
-    String Function(String fieldName, Map<String, dynamic> schema) toJsonExpression, {
+    String Function(String jsonKey, Map<String, dynamic> schema)
+        fromJsonExpression,
+    String Function(String fieldName, Map<String, dynamic> schema)
+        toJsonExpression, {
     bool useJsonKey = false,
   });
 }
@@ -26,10 +28,10 @@ abstract class ClassGeneratorStrategy {
 class FieldInfo {
   /// Имя поля в Dart (может быть переименовано через конфиг).
   final String name;
-  
+
   /// Оригинальный JSON ключ из схемы.
   final String jsonKey;
-  
+
   final String dartType;
   final bool isRequired;
   final Map<String, dynamic> schema;

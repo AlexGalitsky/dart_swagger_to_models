@@ -9,7 +9,8 @@ import 'package:test/test.dart';
 void main() {
   group('Configuration file', () {
     test('loads configuration from YAML file', () async {
-      final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_config_');
+      final tempDir = await Directory.systemTemp
+          .createTemp('dart_swagger_to_models_config_');
       final configFile = File('${tempDir.path}/dart_swagger_to_models.yaml');
 
       await configFile.writeAsString('''
@@ -26,7 +27,8 @@ projectDir: ${tempDir.path}
     });
 
     test('applies priority CLI > config > defaults', () async {
-      final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_priority_');
+      final tempDir = await Directory.systemTemp
+          .createTemp('dart_swagger_to_models_priority_');
       final configFile = File('${tempDir.path}/dart_swagger_to_models.yaml');
       final specFile = File('${tempDir.path}/swagger.json');
 
@@ -42,7 +44,9 @@ outputDir: lib/config_models
         'definitions': <String, dynamic>{
           'User': {
             'type': 'object',
-            'properties': {'id': {'type': 'integer'}},
+            'properties': {
+              'id': {'type': 'integer'}
+            },
           },
         },
       };
@@ -58,13 +62,15 @@ outputDir: lib/config_models
       );
 
       expect(result.outputDirectory, equals('${tempDir.path}/cli_models'));
-      final userFile = result.generatedFiles.firstWhere((f) => f.contains('user.dart'));
+      final userFile =
+          result.generatedFiles.firstWhere((f) => f.contains('user.dart'));
       final content = await File(userFile).readAsString();
       expect(content, contains('@freezed'));
     });
 
     test('uses values from config if CLI is not specified', () async {
-      final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_config_only_');
+      final tempDir = await Directory.systemTemp
+          .createTemp('dart_swagger_to_models_config_only_');
       final configFile = File('${tempDir.path}/dart_swagger_to_models.yaml');
       final specFile = File('${tempDir.path}/swagger.json');
 
@@ -80,7 +86,9 @@ outputDir: lib/config_models
         'definitions': <String, dynamic>{
           'User': {
             'type': 'object',
-            'properties': {'id': {'type': 'integer'}},
+            'properties': {
+              'id': {'type': 'integer'}
+            },
           },
         },
       };
@@ -94,15 +102,18 @@ outputDir: lib/config_models
       );
 
       // outputDirectory is now resolved relative to projectDir (absolute path)
-      final expectedOutputDir = p.normalize(p.join(tempDir.path, 'lib', 'config_models'));
+      final expectedOutputDir =
+          p.normalize(p.join(tempDir.path, 'lib', 'config_models'));
       expect(p.normalize(result.outputDirectory), equals(expectedOutputDir));
-      final userFile = result.generatedFiles.firstWhere((f) => f.contains('user.dart'));
+      final userFile =
+          result.generatedFiles.firstWhere((f) => f.contains('user.dart'));
       final content = await File(userFile).readAsString();
       expect(content, contains('@JsonSerializable'));
     });
 
     test('applies schema overrides: className', () async {
-      final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_override_');
+      final tempDir = await Directory.systemTemp
+          .createTemp('dart_swagger_to_models_override_');
       final configFile = File('${tempDir.path}/dart_swagger_to_models.yaml');
       final specFile = File('${tempDir.path}/swagger.json');
 
@@ -119,7 +130,9 @@ schemas:
         'definitions': <String, dynamic>{
           'User': {
             'type': 'object',
-            'properties': {'id': {'type': 'integer'}},
+            'properties': {
+              'id': {'type': 'integer'}
+            },
           },
         },
       };
@@ -133,14 +146,16 @@ schemas:
         config: await ConfigLoader.loadConfig(null, tempDir.path),
       );
 
-      final userFile = result.generatedFiles.firstWhere((f) => f.contains('user.dart'));
+      final userFile =
+          result.generatedFiles.firstWhere((f) => f.contains('user.dart'));
       final content = await File(userFile).readAsString();
       expect(content, contains('class CustomUser'));
       expect(content, isNot(contains('class User')));
     });
 
     test('applies schema overrides: fieldNames', () async {
-      final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_fieldnames_');
+      final tempDir = await Directory.systemTemp
+          .createTemp('dart_swagger_to_models_fieldnames_');
       final configFile = File('${tempDir.path}/dart_swagger_to_models.yaml');
       final specFile = File('${tempDir.path}/swagger.json');
 
@@ -176,7 +191,8 @@ schemas:
         config: await ConfigLoader.loadConfig(null, tempDir.path),
       );
 
-      final userFile = result.generatedFiles.firstWhere((f) => f.contains('user.dart'));
+      final userFile =
+          result.generatedFiles.firstWhere((f) => f.contains('user.dart'));
       final content = await File(userFile).readAsString();
       expect(content, contains('final int userId;'));
       expect(content, contains('final String userName;'));
@@ -185,7 +201,8 @@ schemas:
     });
 
     test('applies schema overrides: typeMapping', () async {
-      final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_typemap_');
+      final tempDir = await Directory.systemTemp
+          .createTemp('dart_swagger_to_models_typemap_');
       final configFile = File('${tempDir.path}/dart_swagger_to_models.yaml');
       final specFile = File('${tempDir.path}/swagger.json');
 
@@ -221,14 +238,16 @@ schemas:
         config: await ConfigLoader.loadConfig(null, tempDir.path),
       );
 
-      final userFile = result.generatedFiles.firstWhere((f) => f.contains('user.dart'));
+      final userFile =
+          result.generatedFiles.firstWhere((f) => f.contains('user.dart'));
       final content = await File(userFile).readAsString();
       expect(content, contains('final MyCustomInt id;'));
       expect(content, contains('final MyCustomString name;'));
     });
 
     test('returns empty configuration if file not found', () async {
-      final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_no_config_');
+      final tempDir = await Directory.systemTemp
+          .createTemp('dart_swagger_to_models_no_config_');
       final config = await ConfigLoader.loadConfig(null, tempDir.path);
 
       expect(config.defaultStyle, isNull);
@@ -238,7 +257,8 @@ schemas:
     });
 
     test('loads configuration from specified path', () async {
-      final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_custom_path_');
+      final tempDir = await Directory.systemTemp
+          .createTemp('dart_swagger_to_models_custom_path_');
       final configFile = File('${tempDir.path}/custom_config.yaml');
 
       await configFile.writeAsString('''
@@ -246,7 +266,8 @@ defaultStyle: freezed
 outputDir: lib/custom
 ''');
 
-      final config = await ConfigLoader.loadConfig(configFile.path, tempDir.path);
+      final config =
+          await ConfigLoader.loadConfig(configFile.path, tempDir.path);
 
       expect(config.defaultStyle, equals(GenerationStyle.freezed));
       expect(config.outputDir, equals('lib/custom'));

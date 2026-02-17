@@ -7,7 +7,8 @@ import 'package:test/test.dart';
 void main() {
   group('SwaggerToDartGenerator', () {
     test('generates Dart models from simple Swagger 2.0', () async {
-      final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_test_');
+      final tempDir =
+          await Directory.systemTemp.createTemp('dart_swagger_to_models_test_');
       final specFile = File('${tempDir.path}/swagger.json');
 
       final spec = <String, dynamic>{
@@ -52,7 +53,8 @@ void main() {
     });
 
     test('generates enum for string types with enum values', () async {
-      final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_test_');
+      final tempDir =
+          await Directory.systemTemp.createTemp('dart_swagger_to_models_test_');
       final specFile = File('${tempDir.path}/swagger.json');
 
       final spec = <String, dynamic>{
@@ -97,7 +99,8 @@ void main() {
     });
 
     test('supports OpenAPI 3.0 with nullable fields', () async {
-      final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_test_');
+      final tempDir =
+          await Directory.systemTemp.createTemp('dart_swagger_to_models_test_');
       final specFile = File('${tempDir.path}/openapi.json');
 
       final spec = <String, dynamic>{
@@ -143,7 +146,8 @@ void main() {
     });
 
     test('supports allOf (OpenAPI 3)', () async {
-      final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_test_');
+      final tempDir =
+          await Directory.systemTemp.createTemp('dart_swagger_to_models_test_');
       final specFile = File('${tempDir.path}/openapi.json');
 
       final spec = <String, dynamic>{
@@ -188,8 +192,8 @@ void main() {
         projectDir: tempDir.path,
       );
 
-      final baseFile =
-          result.generatedFiles.firstWhere((f) => f.contains('base_entity.dart'));
+      final baseFile = result.generatedFiles
+          .firstWhere((f) => f.contains('base_entity.dart'));
       final userFile =
           result.generatedFiles.firstWhere((f) => f.contains('user.dart'));
 
@@ -206,7 +210,8 @@ void main() {
     });
 
     test('supports arrays with nested types', () async {
-      final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_test_');
+      final tempDir =
+          await Directory.systemTemp.createTemp('dart_swagger_to_models_test_');
       final specFile = File('${tempDir.path}/swagger.json');
 
       final spec = <String, dynamic>{
@@ -247,7 +252,8 @@ void main() {
     });
 
     test('supports additionalProperties', () async {
-      final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_test_');
+      final tempDir =
+          await Directory.systemTemp.createTemp('dart_swagger_to_models_test_');
       final specFile = File('${tempDir.path}/openapi.json');
 
       final spec = <String, dynamic>{
@@ -288,7 +294,8 @@ void main() {
     });
 
     test('distinguishes int and num', () async {
-      final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_test_');
+      final tempDir =
+          await Directory.systemTemp.createTemp('dart_swagger_to_models_test_');
       final specFile = File('${tempDir.path}/swagger.json');
 
       final spec = <String, dynamic>{

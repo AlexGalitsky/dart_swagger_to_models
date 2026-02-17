@@ -7,8 +7,10 @@ import 'package:test/test.dart';
 
 void main() {
   group('Better ergonomics for json_serializable / freezed', () {
-    test('generates @JsonKey for snake_case JSON keys in json_serializable', () async {
-      final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_jsonkey_');
+    test('generates @JsonKey for snake_case JSON keys in json_serializable',
+        () async {
+      final tempDir = await Directory.systemTemp
+          .createTemp('dart_swagger_to_models_jsonkey_');
       final configFile = File('${tempDir.path}/dart_swagger_to_models.yaml');
       final specFile = File('${tempDir.path}/swagger.json');
 
@@ -42,7 +44,8 @@ useJsonKey: true
         config: await ConfigLoader.loadConfig(null, tempDir.path),
       );
 
-      final userFile = result.generatedFiles.firstWhere((f) => f.contains('user.dart'));
+      final userFile =
+          result.generatedFiles.firstWhere((f) => f.contains('user.dart'));
       final content = await File(userFile).readAsString();
       expect(content, contains("@JsonKey(name: 'user_id')"));
       expect(content, contains("@JsonKey(name: 'user_name')"));
@@ -53,7 +56,8 @@ useJsonKey: true
     });
 
     test('generates @JsonKey for snake_case JSON keys in freezed', () async {
-      final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_jsonkey_freezed_');
+      final tempDir = await Directory.systemTemp
+          .createTemp('dart_swagger_to_models_jsonkey_freezed_');
       final configFile = File('${tempDir.path}/dart_swagger_to_models.yaml');
       final specFile = File('${tempDir.path}/swagger.json');
 
@@ -86,7 +90,8 @@ useJsonKey: true
         config: await ConfigLoader.loadConfig(null, tempDir.path),
       );
 
-      final userFile = result.generatedFiles.firstWhere((f) => f.contains('user.dart'));
+      final userFile =
+          result.generatedFiles.firstWhere((f) => f.contains('user.dart'));
       final content = await File(userFile).readAsString();
       expect(content, contains("@JsonKey(name: 'user_id')"));
       expect(content, contains("@JsonKey(name: 'user_name')"));
@@ -95,7 +100,8 @@ useJsonKey: true
     });
 
     test('does not generate @JsonKey if useJsonKey: false', () async {
-      final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_no_jsonkey_');
+      final tempDir = await Directory.systemTemp
+          .createTemp('dart_swagger_to_models_no_jsonkey_');
       final configFile = File('${tempDir.path}/dart_swagger_to_models.yaml');
       final specFile = File('${tempDir.path}/swagger.json');
 
@@ -127,14 +133,16 @@ useJsonKey: false
         config: await ConfigLoader.loadConfig(null, tempDir.path),
       );
 
-      final userFile = result.generatedFiles.firstWhere((f) => f.contains('user.dart'));
+      final userFile =
+          result.generatedFiles.firstWhere((f) => f.contains('user.dart'));
       final content = await File(userFile).readAsString();
       expect(content, isNot(contains("@JsonKey(name: 'user_id')")));
       expect(content, contains('final int userId;'));
     });
 
     test('useJsonKey override at schema level', () async {
-      final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_jsonkey_override_');
+      final tempDir = await Directory.systemTemp
+          .createTemp('dart_swagger_to_models_jsonkey_override_');
       final configFile = File('${tempDir.path}/dart_swagger_to_models.yaml');
       final specFile = File('${tempDir.path}/swagger.json');
 
@@ -175,12 +183,14 @@ schemas:
         config: await ConfigLoader.loadConfig(null, tempDir.path),
       );
 
-      final userFile = result.generatedFiles.firstWhere((f) => f.contains('user.dart'));
-      final orderFile = result.generatedFiles.firstWhere((f) => f.contains('order.dart'));
-      
+      final userFile =
+          result.generatedFiles.firstWhere((f) => f.contains('user.dart'));
+      final orderFile =
+          result.generatedFiles.firstWhere((f) => f.contains('order.dart'));
+
       final userContent = await File(userFile).readAsString();
       final orderContent = await File(orderFile).readAsString();
-      
+
       expect(userContent, contains("@JsonKey(name: 'user_id')"));
       expect(orderContent, isNot(contains("@JsonKey(name: 'order_id')")));
     });

@@ -3,25 +3,23 @@ import 'class_generator_strategy.dart';
 /// Стратегия генерации для freezed стиля.
 class FreezedGenerator extends ClassGeneratorStrategy {
   @override
-  List<String> generateImportsAndParts(String fileName) {
-    return [
-      "import 'package:freezed_annotation/freezed_annotation.dart';",
-      "part '$fileName.freezed.dart';",
-      "part '$fileName.g.dart';",
-    ];
-  }
+  List<String> generateImportsAndParts(String fileName) => [
+        "import 'package:freezed_annotation/freezed_annotation.dart';",
+        "part '$fileName.freezed.dart';",
+        "part '$fileName.g.dart';",
+      ];
 
   @override
-  List<String> generateClassAnnotations(String className) {
-    return ['@freezed'];
-  }
+  List<String> generateClassAnnotations(String className) => ['@freezed'];
 
   @override
   String generateFullClass(
     String className,
     Map<String, FieldInfo> fields,
-    String Function(String jsonKey, Map<String, dynamic> schema) fromJsonExpression,
-    String Function(String fieldName, Map<String, dynamic> schema) toJsonExpression, {
+    String Function(String jsonKey, Map<String, dynamic> schema)
+        fromJsonExpression,
+    String Function(String fieldName, Map<String, dynamic> schema)
+        toJsonExpression, {
     bool useJsonKey = false,
   }) {
     final buffer = StringBuffer()

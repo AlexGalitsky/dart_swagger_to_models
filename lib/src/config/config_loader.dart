@@ -13,7 +13,8 @@ class ConfigLoader {
   ///
   /// [configPath] - путь к конфигурационному файлу.
   /// Если [configPath] равен null, ищет `dart_swagger_to_models.yaml` в корне проекта.
-  static Future<Config> loadConfig(String? configPath, String projectDir) async {
+  static Future<Config> loadConfig(
+      String? configPath, String projectDir) async {
     String? actualPath = configPath;
 
     // Если путь не указан, ищем файл в корне проекта
@@ -75,7 +76,8 @@ class ConfigLoader {
       if (schemas != null) {
         schemas.forEach((schemaName, overrideData) {
           if (overrideData is Map) {
-            schemaOverrides[schemaName.toString()] = _parseSchemaOverride(overrideData);
+            schemaOverrides[schemaName.toString()] =
+                _parseSchemaOverride(overrideData);
           }
         });
       }
@@ -109,7 +111,8 @@ class ConfigLoader {
   }
 
   /// Парсит переопределение для схемы.
-  static SchemaOverride _parseSchemaOverride(Map<dynamic, dynamic> overrideData) {
+  static SchemaOverride _parseSchemaOverride(
+      Map<dynamic, dynamic> overrideData) {
     final className = overrideData['className'] as String?;
     final fieldNames = overrideData['fieldNames'] as Map?;
     final typeMapping = overrideData['typeMapping'] as Map?;

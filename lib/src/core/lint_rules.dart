@@ -111,7 +111,8 @@ class LintRuleConfig {
       case 'error':
         return LintSeverity.error;
       default:
-        throw Exception('Unknown severity level: $str (expected: off, warning, error)');
+        throw Exception(
+            'Unknown severity level: $str (expected: off, warning, error)');
     }
   }
 }

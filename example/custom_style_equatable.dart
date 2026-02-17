@@ -2,7 +2,7 @@ import 'package:dart_swagger_to_models/dart_swagger_to_models.dart';
 import 'package:equatable/equatable.dart';
 
 /// Пример кастомного генератора стиля с поддержкой Equatable.
-/// 
+///
 /// Этот пример демонстрирует, как создать собственный стиль генерации,
 /// который добавляет поддержку пакета equatable для сравнения объектов.
 class EquatableGenerator extends ClassGeneratorStrategy {
@@ -22,8 +22,10 @@ class EquatableGenerator extends ClassGeneratorStrategy {
   String generateFullClass(
     String className,
     Map<String, FieldInfo> fields,
-    String Function(String jsonKey, Map<String, dynamic> schema) fromJsonExpression,
-    String Function(String fieldName, Map<String, dynamic> schema) toJsonExpression, {
+    String Function(String jsonKey, Map<String, dynamic> schema)
+        fromJsonExpression,
+    String Function(String fieldName, Map<String, dynamic> schema)
+        toJsonExpression, {
     bool useJsonKey = false,
   }) {
     final buffer = StringBuffer()
@@ -46,7 +48,8 @@ class EquatableGenerator extends ClassGeneratorStrategy {
     buffer.writeln();
 
     // fromJson
-    buffer.writeln('  factory $className.fromJson(Map<String, dynamic> json) {');
+    buffer
+        .writeln('  factory $className.fromJson(Map<String, dynamic> json) {');
     buffer.writeln('    return $className(');
     fields.forEach((propName, field) {
       final jsonKey = propName;
@@ -83,7 +86,7 @@ class EquatableGenerator extends ClassGeneratorStrategy {
 }
 
 /// Функция для регистрации кастомного стиля.
-/// 
+///
 /// Эта функция должна быть вызвана перед использованием кастомного стиля.
 /// Обычно это делается в main() функции или в отдельном файле инициализации.
 void registerEquatableStyle() {

@@ -99,7 +99,8 @@ class GenerationContext {
     String baseName = suggestedName ?? 'Enum';
     int counter = 1;
     String enumName = baseName;
-    while (enumTypes.containsKey(enumName) || generatedEnums.contains(enumName)) {
+    while (
+        enumTypes.containsKey(enumName) || generatedEnums.contains(enumName)) {
       enumName = '$baseName$counter';
       counter++;
     }
@@ -108,4 +109,3 @@ class GenerationContext {
     return enumName;
   }
 }
-

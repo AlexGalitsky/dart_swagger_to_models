@@ -4,7 +4,7 @@ import 'package:crypto/crypto.dart';
 import 'package:path/path.dart' as p;
 
 /// Кэш для инкрементальной генерации.
-/// 
+///
 /// Хранит хеши схем для определения изменений между запусками генератора.
 class GenerationCache {
   final String cacheFilePath;
@@ -15,7 +15,7 @@ class GenerationCache {
   /// Загружает кэш из файла.
   static Future<GenerationCache?> load(String projectDir) async {
     final cacheFile = File(p.join(projectDir, '.dart_swagger_to_models.cache'));
-    
+
     if (!await cacheFile.exists()) {
       return GenerationCache(cacheFile.path);
     }
@@ -25,7 +25,9 @@ class GenerationCache {
       final data = jsonDecode(content) as Map<String, dynamic>;
       final cache = GenerationCache(cacheFile.path);
       cache._schemaHashes = Map<String, String>.from(
-        (data['schemaHashes'] as Map?)?.map((k, v) => MapEntry(k.toString(), v.toString())) ?? {},
+        (data['schemaHashes'] as Map?)
+                ?.map((k, v) => MapEntry(k.toString(), v.toString())) ??
+            {},
       );
       return cache;
     } catch (e) {
@@ -56,13 +58,13 @@ class GenerationCache {
   /// Нормализует схему для стабильного хеширования.
   static Map<String, dynamic> _normalizeSchema(Map<String, dynamic> schema) {
     final result = <String, dynamic>{};
-    
+
     // Сортируем ключи для стабильности
     final sortedKeys = schema.keys.toList()..sort();
-    
+
     for (final key in sortedKeys) {
       final value = schema[key];
-      
+
       if (value is Map<String, dynamic>) {
         result[key] = _normalizeSchema(value);
       } else if (value is List) {
@@ -76,7 +78,7 @@ class GenerationCache {
         result[key] = value;
       }
     }
-    
+
     return result;
   }
 

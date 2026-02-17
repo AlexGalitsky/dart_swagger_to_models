@@ -9,7 +9,8 @@ import 'package:test/test.dart';
 void main() {
   group('Spec quality hints (spec linting)', () {
     test('lint rules work by default', () async {
-      final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_lint_');
+      final tempDir =
+          await Directory.systemTemp.createTemp('dart_swagger_to_models_lint_');
       final specFile = File('${tempDir.path}/swagger.json');
 
       final spec = <String, dynamic>{
@@ -39,7 +40,8 @@ void main() {
     });
 
     test('lint rules can be disabled via config', () async {
-      final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_lint_disabled_');
+      final tempDir = await Directory.systemTemp
+          .createTemp('dart_swagger_to_models_lint_disabled_');
       final configFile = File('${tempDir.path}/dart_swagger_to_models.yaml');
       final specFile = File('${tempDir.path}/swagger.json');
 
@@ -76,7 +78,8 @@ lint:
     });
 
     test('lint rules can be configured individually', () async {
-      final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_lint_custom_');
+      final tempDir = await Directory.systemTemp
+          .createTemp('dart_swagger_to_models_lint_custom_');
       final configFile = File('${tempDir.path}/dart_swagger_to_models.yaml');
       final specFile = File('${tempDir.path}/swagger.json');
 
@@ -118,7 +121,8 @@ lint:
     });
 
     test('empty object check', () async {
-      final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_lint_empty_');
+      final tempDir = await Directory.systemTemp
+          .createTemp('dart_swagger_to_models_lint_empty_');
       final specFile = File('${tempDir.path}/swagger.json');
 
       final spec = <String, dynamic>{
@@ -146,7 +150,8 @@ lint:
     });
 
     test('array without items check', () async {
-      final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_lint_array_');
+      final tempDir = await Directory.systemTemp
+          .createTemp('dart_swagger_to_models_lint_array_');
       final specFile = File('${tempDir.path}/swagger.json');
 
       final spec = <String, dynamic>{
@@ -174,11 +179,15 @@ lint:
         projectDir: tempDir.path,
       );
 
-      expect(Logger.warnings.any((w) => w.contains('array') && w.contains('items')), isTrue);
+      expect(
+          Logger.warnings
+              .any((w) => w.contains('array') && w.contains('items')),
+          isTrue);
     });
 
     test('empty enum check', () async {
-      final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_lint_empty_enum_');
+      final tempDir = await Directory.systemTemp
+          .createTemp('dart_swagger_to_models_lint_empty_enum_');
       final specFile = File('${tempDir.path}/swagger.json');
 
       final spec = <String, dynamic>{
@@ -202,11 +211,15 @@ lint:
         projectDir: tempDir.path,
       );
 
-      expect(Logger.warnings.any((w) => w.contains('Enum') && w.contains('contains no values')), isTrue);
+      expect(
+          Logger.warnings.any(
+              (w) => w.contains('Enum') && w.contains('contains no values')),
+          isTrue);
     });
 
     test('type inconsistency check', () async {
-      final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_lint_inconsistency_');
+      final tempDir = await Directory.systemTemp
+          .createTemp('dart_swagger_to_models_lint_inconsistency_');
       final specFile = File('${tempDir.path}/swagger.json');
 
       final spec = <String, dynamic>{
@@ -235,7 +248,10 @@ lint:
         projectDir: tempDir.path,
       );
 
-      expect(Logger.warnings.any((w) => w.contains('integer') && w.contains('format')), isTrue);
+      expect(
+          Logger.warnings
+              .any((w) => w.contains('integer') && w.contains('format')),
+          isTrue);
     });
   });
 }

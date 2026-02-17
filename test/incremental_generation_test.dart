@@ -8,7 +8,8 @@ import 'package:test/test.dart';
 void main() {
   group('Incremental generation (0.5.1)', () {
     test('generates all schemas on first run', () async {
-      final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_cache_');
+      final tempDir = await Directory.systemTemp
+          .createTemp('dart_swagger_to_models_cache_');
       final specFile = File('${tempDir.path}/openapi.json');
 
       final spec = <String, dynamic>{
@@ -52,7 +53,8 @@ void main() {
     });
 
     test('generates only changed schemas on second run', () async {
-      final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_cache2_');
+      final tempDir = await Directory.systemTemp
+          .createTemp('dart_swagger_to_models_cache2_');
       final specFile = File('${tempDir.path}/openapi.json');
 
       final spec1 = <String, dynamic>{
@@ -127,13 +129,15 @@ void main() {
 
       expect(result2.schemasProcessed, equals(1));
 
-      final userFile = result2.generatedFiles.firstWhere((f) => f.contains('user.dart'));
+      final userFile =
+          result2.generatedFiles.firstWhere((f) => f.contains('user.dart'));
       final userContent = await File(userFile).readAsString();
       expect(userContent, contains('final String email;'));
     });
 
     test('deletes files for removed schemas', () async {
-      final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_cache3_');
+      final tempDir = await Directory.systemTemp
+          .createTemp('dart_swagger_to_models_cache3_');
       final specFile = File('${tempDir.path}/openapi.json');
 
       final spec1 = <String, dynamic>{
@@ -205,7 +209,8 @@ void main() {
     });
 
     test('adds new schemas during incremental generation', () async {
-      final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_cache4_');
+      final tempDir = await Directory.systemTemp
+          .createTemp('dart_swagger_to_models_cache4_');
       final specFile = File('${tempDir.path}/openapi.json');
 
       final spec1 = <String, dynamic>{
@@ -274,7 +279,8 @@ void main() {
     });
 
     test('works without cache (first run)', () async {
-      final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_cache5_');
+      final tempDir = await Directory.systemTemp
+          .createTemp('dart_swagger_to_models_cache5_');
       final specFile = File('${tempDir.path}/openapi.json');
 
       final spec = <String, dynamic>{

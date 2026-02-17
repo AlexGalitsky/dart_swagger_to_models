@@ -3,24 +3,23 @@ import 'class_generator_strategy.dart';
 /// Стратегия генерации для json_serializable стиля.
 class JsonSerializableGenerator extends ClassGeneratorStrategy {
   @override
-  List<String> generateImportsAndParts(String fileName) {
-    return [
-      "import 'package:json_annotation/json_annotation.dart';",
-      "part '$fileName.g.dart';",
-    ];
-  }
+  List<String> generateImportsAndParts(String fileName) => [
+        "import 'package:json_annotation/json_annotation.dart';",
+        "part '$fileName.g.dart';",
+      ];
 
   @override
-  List<String> generateClassAnnotations(String className) {
-    return ['@JsonSerializable()'];
-  }
+  List<String> generateClassAnnotations(String className) =>
+      ['@JsonSerializable()'];
 
   @override
   String generateFullClass(
     String className,
     Map<String, FieldInfo> fields,
-    String Function(String jsonKey, Map<String, dynamic> schema) fromJsonExpression,
-    String Function(String fieldName, Map<String, dynamic> schema) toJsonExpression, {
+    String Function(String jsonKey, Map<String, dynamic> schema)
+        fromJsonExpression,
+    String Function(String fieldName, Map<String, dynamic> schema)
+        toJsonExpression, {
     bool useJsonKey = false,
   }) {
     final buffer = StringBuffer()

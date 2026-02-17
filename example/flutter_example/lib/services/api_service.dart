@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:flutter_example/generated/models/user.dart';
 
 /// API service for fetching users.
-/// 
+///
 /// This service demonstrates how to use generated models with HTTP client.
 class ApiService {
   final String baseUrl;
@@ -22,7 +22,9 @@ class ApiService {
 
     if (response.statusCode == 200) {
       final List<dynamic> jsonList = jsonDecode(response.body);
-      return jsonList.map((json) => User.fromJson(json as Map<String, dynamic>)).toList();
+      return jsonList
+          .map((json) => User.fromJson(json as Map<String, dynamic>))
+          .toList();
     } else {
       throw Exception('Failed to load users: ${response.statusCode}');
     }

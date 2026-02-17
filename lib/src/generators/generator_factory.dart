@@ -8,10 +8,11 @@ import 'style_registry.dart';
 /// Фабрика для создания стратегий генерации.
 class GeneratorFactory {
   /// Создаёт стратегию генерации на основе стиля.
-  /// 
+  ///
   /// Поддерживает как встроенные стили (через enum GenerationStyle),
   /// так и кастомные стили (через строковое имя).
-  static ClassGeneratorStrategy createStrategy(GenerationStyle? style, {String? customStyleName}) {
+  static ClassGeneratorStrategy createStrategy(GenerationStyle? style,
+      {String? customStyleName}) {
     // Если указан кастомный стиль, используем его
     if (customStyleName != null && customStyleName.isNotEmpty) {
       return StyleRegistry.createCustomStrategy(customStyleName);
@@ -33,7 +34,7 @@ class GeneratorFactory {
   }
 
   /// Создаёт стратегию генерации из строкового имени стиля.
-  /// 
+  ///
   /// Поддерживает как встроенные стили ('plain_dart', 'json_serializable', 'freezed'),
   /// так и кастомные стили, зарегистрированные через StyleRegistry.
   static ClassGeneratorStrategy createStrategyFromString(String styleName) {

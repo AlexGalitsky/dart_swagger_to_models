@@ -12,12 +12,13 @@ class PlainDartGenerator extends ClassGeneratorStrategy {
   String generateFullClass(
     String className,
     Map<String, FieldInfo> fields,
-    String Function(String jsonKey, Map<String, dynamic> schema) fromJsonExpression,
-    String Function(String fieldName, Map<String, dynamic> schema) toJsonExpression, {
+    String Function(String jsonKey, Map<String, dynamic> schema)
+        fromJsonExpression,
+    String Function(String fieldName, Map<String, dynamic> schema)
+        toJsonExpression, {
     bool useJsonKey = false,
   }) {
-    final buffer = StringBuffer()
-      ..writeln('class $className {');
+    final buffer = StringBuffer()..writeln('class $className {');
 
     // Поля
     fields.forEach((propName, field) {
@@ -36,7 +37,8 @@ class PlainDartGenerator extends ClassGeneratorStrategy {
     buffer.writeln();
 
     // fromJson
-    buffer.writeln('  factory $className.fromJson(Map<String, dynamic> json) {');
+    buffer
+        .writeln('  factory $className.fromJson(Map<String, dynamic> json) {');
     buffer.writeln('    return $className(');
     fields.forEach((propName, field) {
       final jsonKey = propName;

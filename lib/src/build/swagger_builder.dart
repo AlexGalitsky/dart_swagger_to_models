@@ -9,12 +9,12 @@ import 'package:path/path.dart' as p;
 import 'package:yaml/yaml.dart';
 
 /// Builder для генерации Dart-моделей из Swagger/OpenAPI спецификаций.
-/// 
+///
 /// Этот Builder обрабатывает файлы спецификаций (`.yaml`, `.yml`, `.json`)
 /// и генерирует Dart-модели в указанной выходной директории.
-/// 
+///
 /// Конфигурация читается из `dart_swagger_to_models.yaml` в корне проекта.
-/// 
+///
 /// Использование:
 /// 1. Создайте файл `build.yaml` в корне проекта:
 /// ```yaml
@@ -41,7 +41,7 @@ class SwaggerBuilder implements Builder {
   @override
   FutureOr<void> build(BuildStep buildStep) async {
     final inputId = buildStep.inputId;
-    
+
     // Пропускаем файлы, которые не являются спецификациями OpenAPI/Swagger
     if (!_isSpecFile(inputId.path)) {
       return;
@@ -56,7 +56,8 @@ class SwaggerBuilder implements Builder {
       } else {
         // Для YAML используем yaml пакет
         final yaml = loadYaml(specContent) as Map;
-        spec = Map<String, dynamic>.from(yaml.map((k, v) => MapEntry(k.toString(), v)));
+        spec = Map<String, dynamic>.from(
+            yaml.map((k, v) => MapEntry(k.toString(), v)));
       }
     } catch (e) {
       log.warning('Failed to parse specification ${inputId.path}: $e');
@@ -70,7 +71,7 @@ class SwaggerBuilder implements Builder {
 
     // Находим корень проекта
     final projectRoot = await _findProjectRoot(buildStep);
-    
+
     // Читаем конфигурацию
     final configPath = p.join(projectRoot, configFileName);
     Config? config;
@@ -83,15 +84,15 @@ class SwaggerBuilder implements Builder {
 
     // Определяем выходную директорию
     final outputDir = config?.outputDir ?? 'lib/generated/models';
-    final effectiveOutputDir = p.isAbsolute(outputDir)
-        ? outputDir
-        : p.join(projectRoot, outputDir);
+    final effectiveOutputDir =
+        p.isAbsolute(outputDir) ? outputDir : p.join(projectRoot, outputDir);
 
     // Создаём временный файл для спецификации (build_runner работает с AssetId)
-    final tempSpecFile = File(p.join(Directory.systemTemp.path, '${inputId.path.replaceAll('/', '_')}'));
+    final tempSpecFile = File(p.join(
+        Directory.systemTemp.path, '${inputId.path.replaceAll('/', '_')}'));
     try {
       await tempSpecFile.writeAsString(specContent);
-      
+
       // Генерируем модели
       final result = await SwaggerToDartGenerator.generateModels(
         input: tempSpecFile.path,
@@ -132,17 +133,22 @@ class SwaggerBuilder implements Builder {
   /// Проверяет, является ли файл спецификацией OpenAPI/Swagger.
   bool _isSpecFile(String path) {
     final lowerPath = path.toLowerCase();
-    return (lowerPath.contains('swagger') || 
+    return (lowerPath.contains('swagger') ||
             lowerPath.contains('openapi') ||
             lowerPath.contains('api')) &&
-           (path.endsWith('.yaml') || path.endsWith('.yml') || path.endsWith('.json'));
+        (path.endsWith('.yaml') ||
+            path.endsWith('.yml') ||
+            path.endsWith('.json'));
   }
 
   /// Проверяет, является ли содержимое спецификацией Swagger/OpenAPI.
   bool _isSwaggerOrOpenApiSpec(Map<String, dynamic> spec) {
-    return spec.containsKey('swagger') || 
-           spec.containsKey('openapi') ||
-           (spec.containsKey('info') && (spec.containsKey('paths') || spec.containsKey('definitions') || spec.containsKey('components')));
+    return spec.containsKey('swagger') ||
+        spec.containsKey('openapi') ||
+        (spec.containsKey('info') &&
+            (spec.containsKey('paths') ||
+                spec.containsKey('definitions') ||
+                spec.containsKey('components')));
   }
 
   /// Находит корневую директорию проекта.
@@ -150,8 +156,10 @@ class SwaggerBuilder implements Builder {
     // Ищем pubspec.yaml вверх по дереву директорий
     var current = p.dirname(buildStep.inputId.path);
     var package = buildStep.inputId.package;
-    
-    while (current.isNotEmpty && current != '.' && current != p.rootPrefix(current)) {
+
+    while (current.isNotEmpty &&
+        current != '.' &&
+        current != p.rootPrefix(current)) {
       final pubspecId = AssetId(package, p.join(current, 'pubspec.yaml'));
       if (await buildStep.canRead(pubspecId)) {
         // Для build_runner нужно вернуть путь относительно package

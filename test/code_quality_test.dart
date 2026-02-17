@@ -7,7 +7,8 @@ import 'package:test/test.dart';
 void main() {
   group('Generated code quality', () {
     test('supports x-enumNames for enum values', () async {
-      final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_enum_names_');
+      final tempDir = await Directory.systemTemp
+          .createTemp('dart_swagger_to_models_enum_names_');
       final specFile = File('${tempDir.path}/swagger.json');
 
       final spec = <String, dynamic>{
@@ -31,16 +32,22 @@ void main() {
         projectDir: tempDir.path,
       );
 
-      final statusFile = result.generatedFiles.firstWhere((f) => f.contains('status.dart'));
+      final statusFile =
+          result.generatedFiles.firstWhere((f) => f.contains('status.dart'));
       final content = await File(statusFile).readAsString();
       expect(content, contains('Active,'));
       expect(content, contains('Inactive,'));
       expect(content, contains('Pending;'));
-      expect(content.contains('Active') || content.contains('Inactive') || content.contains('Pending'), isTrue);
+      expect(
+          content.contains('Active') ||
+              content.contains('Inactive') ||
+              content.contains('Pending'),
+          isTrue);
     });
 
     test('supports x-enum-varnames for enum values', () async {
-      final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_enum_varnames_');
+      final tempDir = await Directory.systemTemp
+          .createTemp('dart_swagger_to_models_enum_varnames_');
       final specFile = File('${tempDir.path}/swagger.json');
 
       final spec = <String, dynamic>{
@@ -64,14 +71,16 @@ void main() {
         projectDir: tempDir.path,
       );
 
-      final statusFile = result.generatedFiles.firstWhere((f) => f.contains('status.dart'));
+      final statusFile =
+          result.generatedFiles.firstWhere((f) => f.contains('status.dart'));
       final content = await File(statusFile).readAsString();
       expect(content, contains('ActiveStatus,'));
       expect(content, contains('InactiveStatus;'));
     });
 
     test('generates imports for dependencies between models', () async {
-      final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_imports_');
+      final tempDir = await Directory.systemTemp
+          .createTemp('dart_swagger_to_models_imports_');
       final specFile = File('${tempDir.path}/swagger.json');
 
       final spec = <String, dynamic>{
@@ -104,18 +113,21 @@ void main() {
         projectDir: tempDir.path,
       );
 
-      final orderFile = result.generatedFiles.firstWhere((f) => f.contains('order.dart'));
+      final orderFile =
+          result.generatedFiles.firstWhere((f) => f.contains('order.dart'));
       final content = await File(orderFile).readAsString();
       expect(content, contains('final User user;'));
       expect(content, isNot(contains('final dynamic user;')));
-      final hasImport = content.contains("import 'user.dart';") || 
-                       content.contains("import './user.dart';") ||
-                       content.contains("import 'user';");
-      expect(hasImport, isTrue, reason: 'Should have import for User. Content: $content');
+      final hasImport = content.contains("import 'user.dart';") ||
+          content.contains("import './user.dart';") ||
+          content.contains("import 'user';");
+      expect(hasImport, isTrue,
+          reason: 'Should have import for User. Content: $content');
     });
 
     test('does not generate import for itself', () async {
-      final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_no_self_import_');
+      final tempDir = await Directory.systemTemp
+          .createTemp('dart_swagger_to_models_no_self_import_');
       final specFile = File('${tempDir.path}/swagger.json');
 
       final spec = <String, dynamic>{
@@ -141,7 +153,8 @@ void main() {
         projectDir: tempDir.path,
       );
 
-      final userFile = result.generatedFiles.firstWhere((f) => f.contains('user.dart'));
+      final userFile =
+          result.generatedFiles.firstWhere((f) => f.contains('user.dart'));
       final content = await File(userFile).readAsString();
       expect(content, isNot(contains("import 'user.dart';")));
       expect(content, contains('final User parent;'));

@@ -16,8 +16,10 @@ import 'src/generators/generator_factory.dart';
 export 'src/config/config.dart' show Config, SchemaOverride;
 export 'src/core/types.dart'
     show SpecVersion, GenerationStyle, GenerationResult, GenerationContext;
-export 'src/generators/class_generator_strategy.dart' show ClassGeneratorStrategy, FieldInfo;
+export 'src/generators/class_generator_strategy.dart'
+    show ClassGeneratorStrategy, FieldInfo;
 export 'src/generators/style_registry.dart' show StyleRegistry;
+
 // Builder is exported separately to avoid loading dart:mirrors during normal use.
 // To use the Builder, import: import 'package:dart_swagger_to_models/src/build/swagger_builder.dart';
 
@@ -28,10 +30,10 @@ class SwaggerToDartGenerator {
     if (source.startsWith('http://') || source.startsWith('https://')) {
       final response = await http.get(Uri.parse(source));
       if (response.statusCode >= 400) {
-      throw Exception(
-        'Failed to load specification from URL $source '
-        '(status: ${response.statusCode})',
-      );
+        throw Exception(
+          'Failed to load specification from URL $source '
+          '(status: ${response.statusCode})',
+        );
       }
       return _decodeSpec(response.body, sourceHint: source);
     }
@@ -67,7 +69,8 @@ class SwaggerToDartGenerator {
     if (spec.containsKey('openapi')) {
       return SpecVersion.openApi3;
     }
-    throw Exception('Failed to detect specification version (swagger/openapi).');
+    throw Exception(
+        'Failed to detect specification version (swagger/openapi).');
   }
 
   /// Generates Dart models: one model = one file.
@@ -96,7 +99,7 @@ class SwaggerToDartGenerator {
         ? null // Custom style will be used via config.customStyleName
         : (style ?? effectiveConfig.defaultStyle ?? GenerationStyle.plainDart);
     final effectiveProjectDir = projectDir ?? effectiveConfig.projectDir ?? '.';
-    
+
     // Resolve outputDir relative to projectDir (like in swagger_builder.dart)
     final rawOutputDir = outputDir ?? effectiveConfig.outputDir ?? 'lib/models';
     final effectiveOutputDir = p.isAbsolute(rawOutputDir)
@@ -190,9 +193,10 @@ class SwaggerToDartGenerator {
       final currentSchemaNames = schemas.keys.toSet();
       final cachedSchemaNames = cache.cachedSchemas;
       final deletedSchemas = cachedSchemaNames.difference(currentSchemaNames);
-      
+
       if (deletedSchemas.isNotEmpty) {
-        Logger.verbose('Deleted schemas detected: ${deletedSchemas.join(", ")}');
+        Logger.verbose(
+            'Deleted schemas detected: ${deletedSchemas.join(", ")}');
         for (final deletedSchema in deletedSchemas) {
           cache.removeHash(deletedSchema);
           // Delete file if it exists
@@ -295,14 +299,12 @@ class SwaggerToDartGenerator {
     }
 
     // Then generate classes into separate files
-    final classSchemas = schemasToProcess.entries
-        .where((e) {
-          final schemaMap = <String, dynamic>{
-            ...?e.value as Map<String, dynamic>?,
-          };
-          return !context.isEnum(schemaMap);
-        })
-        .length;
+    final classSchemas = schemasToProcess.entries.where((e) {
+      final schemaMap = <String, dynamic>{
+        ...?e.value as Map<String, dynamic>?,
+      };
+      return !context.isEnum(schemaMap);
+    }).length;
     Logger.verbose('Found class schemas: $classSchemas');
 
     for (final entry in schemasToProcess.entries) {
@@ -467,11 +469,10 @@ class SwaggerToDartGenerator {
 
     // Add imports and parts depending on style
     // For enums imports are not needed, but we keep them for consistency
-    final strategy = GeneratorFactory.createStrategy(style, customStyleName: config?.customStyleName);
+    final strategy = GeneratorFactory.createStrategy(style,
+        customStyleName: config?.customStyleName);
     final imports = strategy.generateImportsAndParts(fileName);
-    for (final import in imports) {
-      buffer.writeln(import);
-    }
+    imports.forEach(buffer.writeln);
     if (imports.isNotEmpty) {
       buffer.writeln();
     }
@@ -503,12 +504,14 @@ class SwaggerToDartGenerator {
         if (refSchema != null) {
           final refName = ref.split('/').last;
           final refTypeName = _toPascalCase(refName);
-          
+
           // Don't add dependency on self
-          if (refTypeName != currentSchemaName && !visited.contains(refTypeName)) {
+          if (refTypeName != currentSchemaName &&
+              !visited.contains(refTypeName)) {
             visited.add(refTypeName);
             // Check that this is not a built-in type
-            if (refSchema.containsKey('properties') || context.isEnum(refSchema)) {
+            if (refSchema.containsKey('properties') ||
+                context.isEnum(refSchema)) {
               dependencies.add(refTypeName);
             }
             // Recursively collect dependencies from ref schema
@@ -563,7 +566,7 @@ class SwaggerToDartGenerator {
     final imports = <String>[];
     final currentFilePath = p.join(outputDir, currentFileName);
     final currentDir = p.dirname(currentFilePath);
-    
+
     for (final dep in dependencies) {
       final depFileName = _toSnakeCase(dep);
       final depPath = p.join(outputDir, '$depFileName.dart');
@@ -597,25 +600,27 @@ class SwaggerToDartGenerator {
 
     // Collect dependencies for imports
     final schemaName = override?.className ?? _toPascalCase(className);
-    final dependencies = _collectDependencies(schema, context, schemaName, outputDir);
-    final modelImports = _generateImportsForDependencies(dependencies, outputDir, '$fileName.dart');
+    final dependencies =
+        _collectDependencies(schema, context, schemaName, outputDir);
+    final modelImports = _generateImportsForDependencies(
+        dependencies, outputDir, '$fileName.dart');
 
     // Add imports and parts depending on style
-    final strategy = GeneratorFactory.createStrategy(style, customStyleName: config?.customStyleName);
+    final strategy = GeneratorFactory.createStrategy(style,
+        customStyleName: config?.customStyleName);
     final styleImports = strategy.generateImportsAndParts(fileName);
-    
+
     // Combine imports: first model imports, then style imports
     final allImports = <String>[...modelImports, ...styleImports];
-    for (final import in allImports) {
-      buffer.writeln(import);
-    }
+    allImports.forEach(buffer.writeln);
     if (allImports.isNotEmpty) {
       buffer.writeln();
     }
 
     buffer.writeln('/*SWAGGER-TO-DART: Codegen start*/');
     buffer.writeln();
-    buffer.write(_generateClass(className, schema, context, style, config: config, override: override));
+    buffer.write(_generateClass(className, schema, context, style,
+        config: config, override: override));
     buffer.writeln();
     buffer.writeln('/*SWAGGER-TO-DART: Codegen stop*/');
 
@@ -631,8 +636,8 @@ class SwaggerToDartGenerator {
     GenerationStyle? style, {
     Config? config,
   }) {
-    final startMarker = '/*SWAGGER-TO-DART: Codegen start*/';
-    final stopMarker = '/*SWAGGER-TO-DART: Codegen stop*/';
+    const startMarker = '/*SWAGGER-TO-DART: Codegen start*/';
+    const stopMarker = '/*SWAGGER-TO-DART: Codegen stop*/';
 
     final startIndex = existingContent.indexOf(startMarker);
     final stopIndex = existingContent.indexOf(stopMarker);
@@ -649,7 +654,8 @@ class SwaggerToDartGenerator {
       );
     }
 
-    final before = existingContent.substring(0, startIndex + startMarker.length);
+    final before =
+        existingContent.substring(0, startIndex + startMarker.length);
     final after = existingContent.substring(stopIndex);
     final newEnumCode = _generateEnum(enumName, schema, context);
 
@@ -667,8 +673,8 @@ class SwaggerToDartGenerator {
     Config? config,
     SchemaOverride? override,
   }) {
-    final startMarker = '/*SWAGGER-TO-DART: Codegen start*/';
-    final stopMarker = '/*SWAGGER-TO-DART: Codegen stop*/';
+    const startMarker = '/*SWAGGER-TO-DART: Codegen start*/';
+    const stopMarker = '/*SWAGGER-TO-DART: Codegen stop*/';
 
     final startIndex = existingContent.indexOf(startMarker);
     final stopIndex = existingContent.indexOf(stopMarker);
@@ -687,9 +693,11 @@ class SwaggerToDartGenerator {
       );
     }
 
-    final before = existingContent.substring(0, startIndex + startMarker.length);
+    final before =
+        existingContent.substring(0, startIndex + startMarker.length);
     final after = existingContent.substring(stopIndex);
-    final newClassCode = _generateClass(className, schema, context, style, config: config, override: override);
+    final newClassCode = _generateClass(className, schema, context, style,
+        config: config, override: override);
 
     return '$before\n$newClassCode\n$after';
   }
@@ -697,7 +705,9 @@ class SwaggerToDartGenerator {
   /// Converts name to snake_case for file name.
   static String _toSnakeCase(String name) {
     final pascal = _toPascalCase(name);
-    if (pascal.isEmpty) return '';
+    if (pascal.isEmpty) {
+      return '';
+    }
     final buffer = StringBuffer();
     for (var i = 0; i < pascal.length; i++) {
       final char = pascal[i];
@@ -758,19 +768,22 @@ class SwaggerToDartGenerator {
   ) {
     final enumName = _toPascalCase(name);
     final enumValues = schema['enum'] as List?;
-    if (enumValues == null || enumValues.isEmpty) return '';
+    if (enumValues == null || enumValues.isEmpty) {
+      return '';
+    }
 
     // Support x-enumNames / x-enum-varnames
-    final enumNames = schema['x-enumNames'] as List? ?? schema['x-enum-varnames'] as List?;
-    final hasCustomNames = enumNames != null && enumNames.length == enumValues.length;
+    final enumNames =
+        schema['x-enumNames'] as List? ?? schema['x-enum-varnames'] as List?;
+    final hasCustomNames =
+        enumNames != null && enumNames.length == enumValues.length;
 
-    final buffer = StringBuffer()
-      ..writeln('enum $enumName {');
+    final buffer = StringBuffer()..writeln('enum $enumName {');
 
     for (var i = 0; i < enumValues.length; i++) {
       final value = enumValues[i];
       String enumValue;
-      
+
       if (hasCustomNames && enumNames[i] is String) {
         // Use custom name from x-enumNames / x-enum-varnames
         enumValue = _toEnumValueName(enumNames[i] as String);
@@ -815,7 +828,9 @@ class SwaggerToDartGenerator {
         .replaceAll(RegExp(r'[^A-Za-z0-9_]'), '_')
         .replaceAll(RegExp(r'_+'), '_')
         .trim();
-    if (cleaned.isEmpty) return 'unknown';
+    if (cleaned.isEmpty) {
+      return 'unknown';
+    }
     if (RegExp(r'^[0-9]').hasMatch(cleaned)) {
       return 'value_$cleaned';
     }
@@ -832,7 +847,8 @@ class SwaggerToDartGenerator {
   }) {
     // Handle allOf (OpenAPI 3)
     if (schema.containsKey('allOf') && schema['allOf'] is List) {
-      return _generateAllOfClass(name, schema, context, style, config: config, override: override);
+      return _generateAllOfClass(name, schema, context, style,
+          config: config, override: override);
     }
 
     // Handle oneOf/anyOf (OpenAPI 3)
@@ -855,7 +871,9 @@ class SwaggerToDartGenerator {
 
     // If object only has additionalProperties and no properties — generate
     // the same for all styles.
-    if (properties.isEmpty && additionalProps != null && additionalProps != false) {
+    if (properties.isEmpty &&
+        additionalProps != null &&
+        additionalProps != false) {
       final valueType = additionalProps is Map<String, dynamic>
           ? _dartTypeForSchema(additionalProps, context, required: true)
           : 'dynamic';
@@ -868,8 +886,10 @@ class SwaggerToDartGenerator {
         ..writeln('  factory $className.fromJson(Map<String, dynamic> json) {')
         ..writeln('    return $className(');
       if (additionalProps is Map<String, dynamic>) {
-        final valueExpr = _fromJsonExpression('v', additionalProps, context, isRequired: true);
-        classBuffer.writeln('      data: json.map((k, v) => MapEntry(k, $valueExpr)),');
+        final valueExpr = _fromJsonExpression('v', additionalProps, context,
+            isRequired: true);
+        classBuffer.writeln(
+            '      data: json.map((k, v) => MapEntry(k, $valueExpr)),');
       } else {
         classBuffer.writeln(
           '      data: (json as Map<String, dynamic>).map((k, v) => MapEntry(k, v)),',
@@ -907,21 +927,25 @@ class SwaggerToDartGenerator {
       String dartType;
       if (override?.typeMapping != null && override!.typeMapping!.isNotEmpty) {
         final typeFromSchema = propSchema['type'] as String?;
-        if (typeFromSchema != null && override.typeMapping!.containsKey(typeFromSchema)) {
+        if (typeFromSchema != null &&
+            override.typeMapping!.containsKey(typeFromSchema)) {
           dartType = override.typeMapping![typeFromSchema]!;
           if (!isNonNullable) {
             dartType = '$dartType?';
           }
         } else {
-          dartType = _dartTypeForSchema(propSchema, context, required: isNonNullable);
+          dartType =
+              _dartTypeForSchema(propSchema, context, required: isNonNullable);
         }
       } else {
-        dartType = _dartTypeForSchema(propSchema, context, required: isNonNullable);
+        dartType =
+            _dartTypeForSchema(propSchema, context, required: isNonNullable);
       }
 
       fieldInfos[propName] = FieldInfo(
         name: fieldName,
-        jsonKey: propName, // Original JSON key
+        jsonKey: propName,
+        // Original JSON key
         dartType: dartType,
         isRequired: isNonNullable,
         schema: propSchema,
@@ -933,7 +957,8 @@ class SwaggerToDartGenerator {
     final useJsonKey = override?.useJsonKey ?? config?.useJsonKey ?? false;
 
     // Use strategy for class generation
-    final strategy = GeneratorFactory.createStrategy(style, customStyleName: config?.customStyleName);
+    final strategy = GeneratorFactory.createStrategy(style,
+        customStyleName: config?.customStyleName);
     return strategy.generateFullClass(
       className,
       fieldInfos,
@@ -941,7 +966,8 @@ class SwaggerToDartGenerator {
         // Determine if field is required based on FieldInfo
         final fieldInfo = fieldInfos[jsonKey];
         final isRequired = fieldInfo?.isRequired ?? false;
-        return _fromJsonExpression('json[\'$jsonKey\']', schema, context, isRequired: isRequired);
+        return _fromJsonExpression('json[\'$jsonKey\']', schema, context,
+            isRequired: isRequired);
       },
       (fieldName, schema) => _toJsonExpression(fieldName, schema, context),
       useJsonKey: useJsonKey,
@@ -949,7 +975,7 @@ class SwaggerToDartGenerator {
   }
 
   /// Generates class for allOf schema.
-  /// 
+  ///
   /// Handles nested allOf combinations and multiple inheritance cases.
   static String _generateAllOfClass(
     String name,
@@ -960,7 +986,8 @@ class SwaggerToDartGenerator {
     SchemaOverride? override,
   }) {
     final allOf = schema['allOf'] as List;
-    Logger.verbose('Processing allOf for schema "$name" (${allOf.length} items)');
+    Logger.verbose(
+        'Processing allOf for schema "$name" (${allOf.length} items)');
 
     final allProperties = <String, dynamic>{};
     final allRequired = <String>[];
@@ -968,12 +995,14 @@ class SwaggerToDartGenerator {
 
     // Recursive function to process allOf items
     void processAllOfItem(dynamic item, String? parentName) {
-      if (item is! Map<String, dynamic>) return;
+      if (item is! Map<String, dynamic>) {
+        return;
+      }
 
       // Handle $ref
       if (item.containsKey(r'$ref')) {
         final ref = item[r'$ref'] as String;
-        
+
         // Check for circular dependencies
         if (processedRefs.contains(ref)) {
           Logger.warning(
@@ -997,7 +1026,8 @@ class SwaggerToDartGenerator {
         // Recursively process nested allOf
         if (refSchema.containsKey('allOf')) {
           final refAllOf = refSchema['allOf'] as List;
-          Logger.verbose('Nested allOf detected in $ref (${refAllOf.length} items)');
+          Logger.verbose(
+              'Nested allOf detected in $ref (${refAllOf.length} items)');
           for (final refItem in refAllOf) {
             processAllOfItem(refItem, ref.split('/').last);
           }
@@ -1005,7 +1035,8 @@ class SwaggerToDartGenerator {
           // Process properties from ref schema
           final props = refSchema['properties'] as Map<String, dynamic>? ?? {};
           allProperties.addAll(props);
-          final req = (refSchema['required'] as List?)?.cast<String>() ?? <String>[];
+          final req =
+              (refSchema['required'] as List?)?.cast<String>() ?? <String>[];
           allRequired.addAll(req);
         }
 
@@ -1020,7 +1051,8 @@ class SwaggerToDartGenerator {
         // If item itself contains allOf, process recursively
         if (item.containsKey('allOf')) {
           final nestedAllOf = item['allOf'] as List;
-          Logger.verbose('Nested allOf detected in schema item "$name" (${nestedAllOf.length} items)');
+          Logger.verbose(
+              'Nested allOf detected in schema item "$name" (${nestedAllOf.length} items)');
           for (final nestedItem in nestedAllOf) {
             processAllOfItem(nestedItem, parentName);
           }
@@ -1046,11 +1078,12 @@ class SwaggerToDartGenerator {
       if (allRequired.isNotEmpty) 'required': allRequired,
     };
 
-    return _generateClass(name, mergedSchema, context, style, config: config, override: override);
+    return _generateClass(name, mergedSchema, context, style,
+        config: config, override: override);
   }
 
   /// Generates class for oneOf/anyOf schema.
-  /// 
+  ///
   /// For oneOf/anyOf a safe wrapper with dynamic value is generated.
   /// In the future, union types can be generated here, especially with discriminator.
   static String _generateOneOfClass(
@@ -1064,7 +1097,7 @@ class SwaggerToDartGenerator {
     final className = override?.className ?? _toPascalCase(name);
     final hasOneOf = oneOf != null && oneOf.isNotEmpty;
     final hasAnyOf = anyOf != null && anyOf.isNotEmpty;
-    
+
     // Determine types for logging
     final possibleTypes = <String>[];
     if (hasOneOf) {
@@ -1103,7 +1136,7 @@ class SwaggerToDartGenerator {
     // Check for discriminator (for future union type support)
     final discriminator = schema['discriminator'] as Map<String, dynamic>?;
     final hasDiscriminator = discriminator != null;
-    
+
     if (hasDiscriminator) {
       final propertyName = discriminator['propertyName'] as String? ?? 'type';
       Logger.verbose(
@@ -1130,8 +1163,10 @@ class SwaggerToDartGenerator {
     final buffer = StringBuffer()
       ..writeln('/// Class for ${hasOneOf ? 'oneOf' : 'anyOf'} schema "$name".')
       ..writeln('///')
-      ..writeln('/// Note: For ${hasOneOf ? 'oneOf' : 'anyOf'} schemas, a wrapper with dynamic value is generated.')
-      ..writeln('/// Union type generation support will be added in future versions.');
+      ..writeln(
+          '/// Note: For ${hasOneOf ? 'oneOf' : 'anyOf'} schemas, a wrapper with dynamic value is generated.')
+      ..writeln(
+          '/// Union type generation support will be added in future versions.');
     if (possibleTypes.isNotEmpty) {
       buffer.writeln('/// Possible types: ${possibleTypes.join(', ')}.');
     }
@@ -1144,10 +1179,12 @@ class SwaggerToDartGenerator {
       ..writeln()
       ..writeln('  /// Creates instance from JSON.')
       ..writeln('  ///')
-      ..writeln('  /// Note: For ${hasOneOf ? 'oneOf' : 'anyOf'} schemas, manual type validation is required.')
+      ..writeln(
+          '  /// Note: For ${hasOneOf ? 'oneOf' : 'anyOf'} schemas, manual type validation is required.')
       ..writeln('  factory $className.fromJson(dynamic json) {')
       ..writeln('    if (json == null) {')
-      ..writeln('      throw ArgumentError(\'JSON cannot be null for $className\');')
+      ..writeln(
+          '      throw ArgumentError(\'JSON cannot be null for $className\');')
       ..writeln('    }')
       ..writeln('    return $className(json);')
       ..writeln('  }')
@@ -1174,7 +1211,8 @@ class SwaggerToDartGenerator {
       if (refSchema != null) {
         // Check if this is an enum
         if (context.isEnum(refSchema)) {
-          final enumName = context.getEnumTypeName(refSchema, ref.split('/').last);
+          final enumName =
+              context.getEnumTypeName(refSchema, ref.split('/').last);
           if (enumName != null) {
             return required ? enumName : '$enumName?';
           }
@@ -1232,7 +1270,8 @@ class SwaggerToDartGenerator {
         final additionalProps = schema['additionalProperties'];
         if (additionalProps != null && additionalProps != false) {
           if (additionalProps is Map<String, dynamic>) {
-            final valueType = _dartTypeForSchema(additionalProps, context, required: true);
+            final valueType =
+                _dartTypeForSchema(additionalProps, context, required: true);
             base = 'Map<String, $valueType>';
           } else {
             base = 'Map<String, dynamic>';
@@ -1272,7 +1311,8 @@ class SwaggerToDartGenerator {
       final refSchema = context.resolveRef(ref, context: null);
       if (refSchema != null) {
         if (context.isEnum(refSchema)) {
-          final enumName = context.getEnumTypeName(refSchema, ref.split('/').last);
+          final enumName =
+              context.getEnumTypeName(refSchema, ref.split('/').last);
           if (enumName != null) {
             if (isNonNullable) {
               return '$enumName.fromJson($source)!';
@@ -1313,7 +1353,8 @@ class SwaggerToDartGenerator {
       case 'array':
         final items = schema['items'];
         if (items != null && items is Map<String, dynamic>) {
-          final itemExpr = _fromJsonExpression('e', items, context, isRequired: true);
+          final itemExpr =
+              _fromJsonExpression('e', items, context, isRequired: true);
           if (isNonNullable) {
             return '($source as List<dynamic>).map((e) => $itemExpr).toList()';
           }
@@ -1354,7 +1395,8 @@ class SwaggerToDartGenerator {
         final additionalProps = schema['additionalProperties'];
         if (additionalProps != null && additionalProps != false) {
           if (additionalProps is Map<String, dynamic>) {
-            final valueExpr = _fromJsonExpression('v', additionalProps, context, isRequired: true);
+            final valueExpr = _fromJsonExpression('v', additionalProps, context,
+                isRequired: true);
             if (isNonNullable) {
               return '($source as Map<String, dynamic>).map((k, v) => MapEntry(k, $valueExpr))';
             }
@@ -1400,7 +1442,7 @@ class SwaggerToDartGenerator {
           final inner = _toJsonExpression('e', items, context);
           return '$fieldName?.map((e) => $inner).toList()';
         } else {
-          return '$fieldName';
+          return fieldName;
         }
       case 'string':
         if (format == 'date-time' || format == 'date') {
@@ -1426,7 +1468,9 @@ class SwaggerToDartGenerator {
         .replaceAll(RegExp(r'[^A-Za-z0-9_]'), '_')
         .split(RegExp(r'[_\s]+'))
       ..removeWhere((e) => e.isEmpty);
-    if (parts.isEmpty) return 'Unknown';
+    if (parts.isEmpty) {
+      return 'Unknown';
+    }
     return parts.map((p) => p[0].toUpperCase() + p.substring(1)).join();
   }
 
@@ -1440,7 +1484,7 @@ class SwaggerToDartGenerator {
       final schema = <String, dynamic>{
         ...?schemaRaw as Map<String, dynamic>?,
       };
-      
+
       // Check enums (including empty ones)
       final enumValues = schema['enum'] as List?;
       if (enumValues != null) {
@@ -1451,32 +1495,35 @@ class SwaggerToDartGenerator {
         }
       }
 
-              // Check for empty object (only for non-enum schemas and non-oneOf/anyOf/allOf)
-              if (lintConfig.isEnabled(LintRuleId.emptyObject) && 
-                  !context.isEnum(schema) &&
-                  !schema.containsKey('oneOf') &&
-                  !schema.containsKey('anyOf') &&
-                  !schema.containsKey('allOf')) {
-                final properties = schema['properties'] as Map<String, dynamic>? ?? {};
-                final additionalProps = schema['additionalProperties'];
-                if (properties.isEmpty && (additionalProps == null || additionalProps == false)) {
-                  _reportLintIssue(
-                    LintRuleId.emptyObject,
-                    lintConfig,
-                    'Schema "$schemaName" is an empty object (no properties and additionalProperties).',
-                  );
-                }
-              }
+      // Check for empty object (only for non-enum schemas and non-oneOf/anyOf/allOf)
+      if (lintConfig.isEnabled(LintRuleId.emptyObject) &&
+          !context.isEnum(schema) &&
+          !schema.containsKey('oneOf') &&
+          !schema.containsKey('anyOf') &&
+          !schema.containsKey('allOf')) {
+        final properties = schema['properties'] as Map<String, dynamic>? ?? {};
+        final additionalProps = schema['additionalProperties'];
+        if (properties.isEmpty &&
+            (additionalProps == null || additionalProps == false)) {
+          _reportLintIssue(
+            LintRuleId.emptyObject,
+            lintConfig,
+            'Schema "$schemaName" is an empty object (no properties and additionalProperties).',
+          );
+        }
+      }
 
-      final properties = schema['properties'] as Map<String, dynamic>? ?? <String, dynamic>{};
+      final properties =
+          schema['properties'] as Map<String, dynamic>? ?? <String, dynamic>{};
       properties.forEach((propName, propSchemaRaw) {
         final propSchema = <String, dynamic>{
           ...?propSchemaRaw as Map<String, dynamic>?,
         };
-        
+
         // Check for missing type
         if (lintConfig.isEnabled(LintRuleId.missingType)) {
-          if (!propSchema.containsKey('type') && !propSchema.containsKey(r'$ref')) {
+          if (!propSchema.containsKey('type') &&
+              !propSchema.containsKey(r'$ref')) {
             _reportLintIssue(
               LintRuleId.missingType,
               lintConfig,
@@ -1488,10 +1535,13 @@ class SwaggerToDartGenerator {
 
         // Check for suspicious fields (e.g., id without nullable and without required)
         if (lintConfig.isEnabled(LintRuleId.suspiciousIdField)) {
-          if (propName == 'id' || propName.endsWith('_id') || propName.endsWith('Id')) {
+          if (propName == 'id' ||
+              propName.endsWith('_id') ||
+              propName.endsWith('Id')) {
             final isNullable = propSchema['nullable'] as bool? ?? false;
-            final isRequired = (schema['required'] as List?)?.contains(propName) ?? false;
-            
+            final isRequired =
+                (schema['required'] as List?)?.contains(propName) ?? false;
+
             if (!isNullable && !isRequired) {
               _reportLintIssue(
                 LintRuleId.suspiciousIdField,
@@ -1588,7 +1638,10 @@ class SwaggerToDartGenerator {
     }
 
     // Check: type: number, but format is specified (format is usually used for string)
-    if (propType == 'number' && format != null && format != 'float' && format != 'double') {
+    if (propType == 'number' &&
+        format != null &&
+        format != 'float' &&
+        format != 'double') {
       _reportLintIssue(
         LintRuleId.typeInconsistency,
         lintConfig,
@@ -1629,14 +1682,15 @@ class SwaggerToDartGenerator {
     }
 
     final missingRefs = <String>{};
-    
+
     void checkSchema(Map<String, dynamic> schema, String? parentName) {
       final schemaRef = schema[r'$ref'] as String?;
       if (schemaRef != null) {
         final refSchema = context.resolveRef(schemaRef, context: parentName);
         if (refSchema == null && !missingRefs.contains(schemaRef)) {
           missingRefs.add(schemaRef);
-          final contextMsg = parentName != null ? ' (in schema "$parentName")' : '';
+          final contextMsg =
+              parentName != null ? ' (in schema "$parentName")' : '';
           _reportLintIssue(
             LintRuleId.missingRefTarget,
             lintConfig,
