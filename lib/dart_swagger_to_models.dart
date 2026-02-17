@@ -91,12 +91,17 @@ class SwaggerToDartGenerator {
   }) async {
     // Apply configuration with priority: parameters > config > default values
     final effectiveConfig = config ?? Config.empty();
-    final effectiveOutputDir = outputDir ?? effectiveConfig.outputDir ?? 'lib/models';
     // If custom style is specified in config, use it; otherwise use defaultStyle or passed style
     final effectiveStyle = effectiveConfig.customStyleName != null
         ? null // Custom style will be used via config.customStyleName
         : (style ?? effectiveConfig.defaultStyle ?? GenerationStyle.plainDart);
     final effectiveProjectDir = projectDir ?? effectiveConfig.projectDir ?? '.';
+    
+    // Resolve outputDir relative to projectDir (like in swagger_builder.dart)
+    final rawOutputDir = outputDir ?? effectiveConfig.outputDir ?? 'lib/models';
+    final effectiveOutputDir = p.isAbsolute(rawOutputDir)
+        ? rawOutputDir
+        : p.join(effectiveProjectDir, rawOutputDir);
 
     final spec = await loadSpec(input);
     final version = detectVersion(spec);

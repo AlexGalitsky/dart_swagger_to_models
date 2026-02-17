@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:dart_swagger_to_models/dart_swagger_to_models.dart';
 import 'package:dart_swagger_to_models/src/config/config_loader.dart';
+import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 
 void main() {
@@ -92,7 +93,9 @@ outputDir: lib/config_models
         config: await ConfigLoader.loadConfig(null, tempDir.path),
       );
 
-      expect(result.outputDirectory, equals('lib/config_models'));
+      // outputDirectory is now resolved relative to projectDir (absolute path)
+      final expectedOutputDir = p.normalize(p.join(tempDir.path, 'lib', 'config_models'));
+      expect(p.normalize(result.outputDirectory), equals(expectedOutputDir));
       final userFile = result.generatedFiles.firstWhere((f) => f.contains('user.dart'));
       final content = await File(userFile).readAsString();
       expect(content, contains('@JsonSerializable'));
