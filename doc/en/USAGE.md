@@ -2,6 +2,22 @@
 
 This document describes typical usage scenarios for `dart_swagger_to_models`.
 
+### Table of Contents
+
+1. [Basic generation](#1-basic-generation)  
+2. [Custom output directory and style](#2-custom-output-directory-and-style)  
+3. [Using the `freezed` style](#3-using-the-freed-style)  
+4. [Regenerating existing files](#4-regenerating-existing-files)  
+5. [Configuration file](#5-configuration-file)  
+6. [Lint configuration](#6-lint-configuration)  
+7. [Null-safety rules](#7-null-safety-rules)  
+8. [Logging and output control](#8-logging-and-output-control)  
+9. [OpenAPI composition schemas (allOf, oneOf, anyOf)](#9-openapi-composition-schemas-allof-oneof-anyof)  
+10. [Incremental generation](#10-incremental-generation)  
+11. [Custom generation styles (pluggable styles)](#11-custom-generation-styles-pluggable-styles)  
+12. [build_runner integration](#12-build_runner-integration)  
+13. [FAQ / Troubleshooting](#13-faq--troubleshooting)
+
 ### 1. Basic generation
 
 Generate models from a local `api.yaml` file (`plain_dart` style, one model = one file):
