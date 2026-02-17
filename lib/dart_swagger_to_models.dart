@@ -572,11 +572,7 @@ class SwaggerToDartGenerator {
       final depPath = p.join(outputDir, '$depFileName.dart');
       final relativePath = p.relative(depPath, from: currentDir);
       // Normalize path for import (use / instead of \)
-      var importPath = relativePath.replaceAll(r'\', '/');
-      // Remove .dart extension
-      if (importPath.endsWith('.dart')) {
-        importPath = importPath.substring(0, importPath.length - 5);
-      }
+      final importPath = relativePath.replaceAll(r'\', '/');
       imports.add("import '$importPath';");
     }
 
