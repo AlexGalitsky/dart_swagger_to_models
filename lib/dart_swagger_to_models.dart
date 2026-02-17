@@ -18,27 +18,27 @@ export 'src/core/types.dart'
     show SpecVersion, GenerationStyle, GenerationResult, GenerationContext;
 export 'src/generators/class_generator_strategy.dart' show ClassGeneratorStrategy, FieldInfo;
 export 'src/generators/style_registry.dart' show StyleRegistry;
-// Builder экспортируется отдельно, чтобы избежать загрузки dart:mirrors при обычном использовании
-// Для использования Builder импортируйте: import 'package:dart_swagger_to_models/src/build/swagger_builder.dart';
+// Builder is exported separately to avoid loading dart:mirrors during normal use.
+// To use the Builder, import: import 'package:dart_swagger_to_models/src/build/swagger_builder.dart';
 
-/// Основной фасад библиотеки.
+/// Main library facade.
 class SwaggerToDartGenerator {
-  /// Загружает спецификацию из локального файла или по URL.
+  /// Loads specification from a local file or URL.
   static Future<Map<String, dynamic>> loadSpec(String source) async {
     if (source.startsWith('http://') || source.startsWith('https://')) {
       final response = await http.get(Uri.parse(source));
       if (response.statusCode >= 400) {
-        throw Exception(
-          'Не удалось загрузить спецификацию по URL $source '
-          '(status: ${response.statusCode})',
-        );
+      throw Exception(
+        'Failed to load specification from URL $source '
+        '(status: ${response.statusCode})',
+      );
       }
       return _decodeSpec(response.body, sourceHint: source);
     }
 
     final file = File(source);
     if (!await file.exists()) {
-      throw Exception('Файл спецификации не найден: $source');
+      throw Exception('Specification file not found: $source');
     }
     final content = await file.readAsString();
     return _decodeSpec(content, sourceHint: source);
@@ -59,7 +59,7 @@ class SwaggerToDartGenerator {
     return jsonDecode(content) as Map<String, dynamic>;
   }
 
-  /// Определяет версию спецификации.
+  /// Detects the specification version.
   static SpecVersion detectVersion(Map<String, dynamic> spec) {
     if (spec.containsKey('swagger')) {
       return SpecVersion.swagger2;
@@ -67,19 +67,19 @@ class SwaggerToDartGenerator {
     if (spec.containsKey('openapi')) {
       return SpecVersion.openApi3;
     }
-    throw Exception('Не удалось определить версию спецификации (swagger/openapi).');
+    throw Exception('Failed to detect specification version (swagger/openapi).');
   }
 
-  /// Генерирует Dart-модели: одна модель = один файл.
+  /// Generates Dart models: one model = one file.
   ///
-  /// [input] — путь к файлу или URL спецификации.
-  /// [outputDir] — директория, куда будут записаны модели (по умолчанию `lib/models`).
-  /// [libraryName] — исторический параметр (в per-file режиме практически не используется).
-  /// [style] — стиль генерации моделей (plain_dart/json_serializable/freezed).
-  /// [projectDir] — корневая директория проекта для сканирования Dart файлов
-  ///                (поиск существующих файлов моделей с маркерами).
-  /// [config] — конфигурация генератора (опционально).
-  /// [changedOnly] — если true, генерирует только изменённые схемы (инкрементальная генерация).
+  /// [input] - path to file or URL of the specification.
+  /// [outputDir] - directory where models will be written (default: `lib/models`).
+  /// [libraryName] - historical parameter (not used in per-file mode).
+  /// [style] - model generation style (plain_dart/json_serializable/freezed).
+  /// [projectDir] - project root directory for scanning Dart files
+  ///                (search for existing model files with markers).
+  /// [config] - generator configuration (optional).
+  /// [changedOnly] - if true, generates only changed schemas (incremental generation).
   static Future<GenerationResult> generateModels({
     required String input,
     String? outputDir,
@@ -89,12 +89,12 @@ class SwaggerToDartGenerator {
     Config? config,
     bool changedOnly = false,
   }) async {
-    // Применяем конфигурацию с приоритетом: параметры > config > значения по умолчанию
+    // Apply configuration with priority: parameters > config > default values
     final effectiveConfig = config ?? Config.empty();
     final effectiveOutputDir = outputDir ?? effectiveConfig.outputDir ?? 'lib/models';
-    // Если в конфиге указан кастомный стиль, используем его; иначе используем defaultStyle или переданный style
+    // If custom style is specified in config, use it; otherwise use defaultStyle or passed style
     final effectiveStyle = effectiveConfig.customStyleName != null
-        ? null // Кастомный стиль будет использован через config.customStyleName
+        ? null // Custom style will be used via config.customStyleName
         : (style ?? effectiveConfig.defaultStyle ?? GenerationStyle.plainDart);
     final effectiveProjectDir = projectDir ?? effectiveConfig.projectDir ?? '.';
 
@@ -104,14 +104,14 @@ class SwaggerToDartGenerator {
 
     if (schemas.isEmpty) {
       throw Exception(
-        'В спецификации не найдены схемы (definitions/components.schemas).',
+        'No schemas found in specification (definitions/components.schemas).',
       );
     }
 
-    // Для правильной работы resolveRef нужно передать все схемы
-    // Для Swagger 2.0 это definitions, для OpenAPI 3 это components.schemas
+    // For resolveRef to work correctly, we need to pass all schemas
+    // For Swagger 2.0 this is definitions, for OpenAPI 3 this is components.schemas
     final allSchemasMap = _getAllSchemas(spec, version);
-    // Для resolveRef нужно структурировать схемы правильно
+    // For resolveRef we need to structure schemas correctly
     final schemasForContext = version == SpecVersion.swagger2
         ? <String, dynamic>{
             'definitions': allSchemasMap,
@@ -138,7 +138,7 @@ class SwaggerToDartGenerator {
     );
   }
 
-  /// Генерирует модели в режиме per-file (одна модель = один файл).
+  /// Generates models in per-file mode (one model = one file).
   static Future<GenerationResult> _generateModelsPerFile({
     required Map<String, dynamic> schemas,
     required GenerationContext context,
@@ -163,12 +163,12 @@ class SwaggerToDartGenerator {
       await outDir.create(recursive: true);
     }
 
-    // Загружаем кэш для инкрементальной генерации
+    // Load cache for incremental generation
     final cache = await GenerationCache.load(projectDir);
     final schemasToProcess = <String, Map<String, dynamic>>{};
 
     if (changedOnly && cache != null) {
-      // Определяем, какие схемы изменились
+      // Determine which schemas have changed
       for (final entry in schemas.entries) {
         final schemaMap = <String, dynamic>{
           ...?entry.value as Map<String, dynamic>?,
@@ -181,7 +181,7 @@ class SwaggerToDartGenerator {
         }
       }
 
-      // Проверяем удалённые схемы
+      // Check for deleted schemas
       final currentSchemaNames = schemas.keys.toSet();
       final cachedSchemaNames = cache.cachedSchemas;
       final deletedSchemas = cachedSchemaNames.difference(currentSchemaNames);
@@ -190,7 +190,7 @@ class SwaggerToDartGenerator {
         Logger.verbose('Обнаружены удалённые схемы: ${deletedSchemas.join(", ")}');
         for (final deletedSchema in deletedSchemas) {
           cache.removeHash(deletedSchema);
-          // Удаляем файл, если он существует
+          // Delete file if it exists
           final fileName = _toSnakeCase(deletedSchema);
           final filePath = p.join(outputDir, '$fileName.dart');
           final file = File(filePath);
@@ -201,7 +201,7 @@ class SwaggerToDartGenerator {
         }
       }
     } else {
-      // Режим полной генерации
+      // Full generation mode
       schemasToProcess.addAll(schemas.map((k, v) => MapEntry(
             k,
             <String, dynamic>{
@@ -210,7 +210,7 @@ class SwaggerToDartGenerator {
           )));
     }
 
-    // Сканируем проект для поиска существующих файлов с маркерами
+    // Scan project for existing files with markers
     Logger.verbose('Сканирование проекта для поиска существующих файлов...');
     final existingFiles = await _scanProjectForMarkers(
       projectDir,
@@ -218,11 +218,11 @@ class SwaggerToDartGenerator {
     );
     Logger.verbose('Найдено существующих файлов: ${existingFiles.length}');
 
-    // Проверяем схемы на подозрительные конструкции (только для обрабатываемых схем)
+    // Check schemas for suspicious constructs (only for processed schemas)
     final lintConfig = config?.lint ?? LintConfig.defaultConfig();
     _validateSchemas(schemasToProcess, context, lintConfig);
 
-    // Сначала генерируем enum'ы
+    // First, generate enums
     final enumSchemas = <String, Map<String, dynamic>>{};
     schemasToProcess.forEach((name, schema) {
       final schemaMap = <String, dynamic>{
@@ -238,7 +238,7 @@ class SwaggerToDartGenerator {
     int filesCreated = 0;
     int filesUpdated = 0;
 
-    // Генерируем enum'ы в отдельные файлы
+    // Generate enums into separate files
     for (final entry in enumSchemas.entries) {
       try {
         final override = config?.schemaOverrides[entry.key];
@@ -278,7 +278,7 @@ class SwaggerToDartGenerator {
           Logger.verbose('Создан enum: $modelName');
         }
 
-        // Обновляем кэш
+        // Update cache
         if (cache != null) {
           final hash = GenerationCache.computeSchemaHash(entry.value);
           cache.setHash(entry.key, hash);
@@ -289,7 +289,7 @@ class SwaggerToDartGenerator {
       }
     }
 
-    // Затем генерируем классы в отдельные файлы
+    // Then generate classes into separate files
     final classSchemas = schemasToProcess.entries
         .where((e) {
           final schemaMap = <String, dynamic>{
@@ -347,7 +347,7 @@ class SwaggerToDartGenerator {
             Logger.verbose('Создан класс: $modelName');
           }
 
-          // Обновляем кэш
+          // Update cache
           if (cache != null) {
             final hash = GenerationCache.computeSchemaHash(schemaMap);
             cache.setHash(entry.key, hash);
@@ -359,7 +359,7 @@ class SwaggerToDartGenerator {
       }
     }
 
-    // Обновляем кэш для всех схем (даже не изменённых, если changedOnly = false)
+    // Update cache for all schemas (even unchanged ones, if changedOnly = false)
     if (cache != null && !changedOnly) {
       for (final entry in schemas.entries) {
         final schemaMap = <String, dynamic>{
@@ -370,13 +370,13 @@ class SwaggerToDartGenerator {
       }
     }
 
-    // Сохраняем кэш
+    // Save cache
     if (cache != null) {
       await cache.save();
       Logger.verbose('Кэш сохранён в ${cache.cacheFilePath}');
     }
 
-    // Проверяем отсутствующие $ref после генерации
+    // Check for missing $ref after generation
     _checkMissingRefs(schemas, context, lintConfig);
 
     return GenerationResult(
@@ -389,17 +389,17 @@ class SwaggerToDartGenerator {
     );
   }
 
-  /// Сканирует проект для поиска Dart файлов с маркерами.
-  /// Возвращает Map<ИмяМодели, СодержимоеФайла>.
+  /// Scans project for Dart files with markers.
+  /// Returns Map<ModelName, FileContent>.
   static Future<Map<String, String>> _scanProjectForMarkers(
     String projectDir,
     String outputDir,
   ) async {
     final result = <String, String>{};
-    // Поддерживаем оба формата: /*SWAGGER-TO-DART*/ и /*SWAGGER-TO-DART:...*/ для обратной совместимости
+    // Support both formats: /*SWAGGER-TO-DART*/ and /*SWAGGER-TO-DART:...*/ for backward compatibility
     final markerPattern = RegExp(r'/\*SWAGGER-TO-DART(:[^*]*)?\*/');
 
-    // Сначала сканируем outputDir
+    // First scan outputDir
     final outputDirectory = Directory(outputDir);
     if (await outputDirectory.exists()) {
       await for (final entity in outputDirectory.list(recursive: false)) {
@@ -413,18 +413,18 @@ class SwaggerToDartGenerator {
               result[modelName] = content;
             }
           } catch (_) {
-            // Игнорируем ошибки чтения файлов
+            // Ignore file reading errors
           }
         }
       }
     }
 
-    // Затем сканируем projectDir (рекурсивно)
+    // Then scan projectDir (recursively)
     final projectDirectory = Directory(projectDir);
     if (await projectDirectory.exists()) {
       await for (final entity in projectDirectory.list(recursive: true)) {
         if (entity is File && entity.path.endsWith('.dart')) {
-          // Пропускаем файлы из outputDir, так как мы их уже проверили
+          // Skip files from outputDir, as we already checked them
           if (p.isWithin(outputDir, entity.path)) {
             continue;
           }
@@ -434,11 +434,11 @@ class SwaggerToDartGenerator {
             if (match != null) {
               final fileName = p.basenameWithoutExtension(entity.path);
               final modelName = _toPascalCase(fileName);
-              // Не перезаписываем, если уже есть в outputDir
+              // Don't overwrite if already exists in outputDir
               result.putIfAbsent(modelName, () => content);
             }
           } catch (_) {
-            // Игнорируем ошибки чтения файлов
+            // Ignore file reading errors
           }
         }
       }
@@ -447,7 +447,7 @@ class SwaggerToDartGenerator {
     return result;
   }
 
-  /// Создаёт новый файл с enum.
+  /// Creates a new file with enum.
   static String _createNewFileWithEnum(
     String enumName,
     Map<String, dynamic> schema,
@@ -460,8 +460,8 @@ class SwaggerToDartGenerator {
     buffer.writeln('/*SWAGGER-TO-DART*/');
     buffer.writeln();
 
-    // Добавляем импорты и part'ы в зависимости от стиля
-    // Для enum'ов импорты не нужны, но оставляем для консистентности
+    // Add imports and parts depending on style
+    // For enums imports are not needed, but we keep them for consistency
     final strategy = GeneratorFactory.createStrategy(style, customStyleName: config?.customStyleName);
     final imports = strategy.generateImportsAndParts(fileName);
     for (final import in imports) {
@@ -480,7 +480,7 @@ class SwaggerToDartGenerator {
     return buffer.toString();
   }
 
-  /// Собирает зависимости (типы, используемые в схеме) для генерации импортов.
+  /// Collects dependencies (types used in schema) for generating imports.
   static Set<String> _collectDependencies(
     Map<String, dynamic> schema,
     GenerationContext context,
@@ -491,7 +491,7 @@ class SwaggerToDartGenerator {
     final visited = <String>{};
 
     void collectFromSchema(Map<String, dynamic> schemaMap, String? parentName) {
-      // Обработка $ref
+      // Handle $ref
       final ref = schemaMap[r'$ref'] as String?;
       if (ref != null) {
         final refSchema = context.resolveRef(ref, context: parentName);
@@ -499,20 +499,20 @@ class SwaggerToDartGenerator {
           final refName = ref.split('/').last;
           final refTypeName = _toPascalCase(refName);
           
-          // Не добавляем зависимость на самого себя
+          // Don't add dependency on self
           if (refTypeName != currentSchemaName && !visited.contains(refTypeName)) {
             visited.add(refTypeName);
-            // Проверяем, что это не встроенный тип
+            // Check that this is not a built-in type
             if (refSchema.containsKey('properties') || context.isEnum(refSchema)) {
               dependencies.add(refTypeName);
             }
-            // Рекурсивно собираем зависимости из ref схемы
+            // Recursively collect dependencies from ref schema
             collectFromSchema(refSchema, refTypeName);
           }
         }
       }
 
-      // Обработка properties
+      // Handle properties
       final properties = schemaMap['properties'] as Map<String, dynamic>?;
       if (properties != null) {
         properties.forEach((_, propSchema) {
@@ -522,19 +522,19 @@ class SwaggerToDartGenerator {
         });
       }
 
-      // Обработка items (для массивов)
+      // Handle items (for arrays)
       final items = schemaMap['items'] as Map<String, dynamic>?;
       if (items != null) {
         collectFromSchema(items, parentName);
       }
 
-      // Обработка additionalProperties
+      // Handle additionalProperties
       final additionalProps = schemaMap['additionalProperties'];
       if (additionalProps is Map<String, dynamic>) {
         collectFromSchema(additionalProps, parentName);
       }
 
-      // Обработка allOf
+      // Handle allOf
       final allOf = schemaMap['allOf'] as List?;
       if (allOf != null) {
         for (final item in allOf) {
@@ -549,7 +549,7 @@ class SwaggerToDartGenerator {
     return dependencies;
   }
 
-  /// Генерирует импорты для зависимостей.
+  /// Generates imports for dependencies.
   static List<String> _generateImportsForDependencies(
     Set<String> dependencies,
     String outputDir,
@@ -563,9 +563,9 @@ class SwaggerToDartGenerator {
       final depFileName = _toSnakeCase(dep);
       final depPath = p.join(outputDir, '$depFileName.dart');
       final relativePath = p.relative(depPath, from: currentDir);
-      // Нормализуем путь для импорта (используем / вместо \)
+      // Normalize path for import (use / instead of \)
       var importPath = relativePath.replaceAll(r'\', '/');
-      // Убираем расширение .dart
+      // Remove .dart extension
       if (importPath.endsWith('.dart')) {
         importPath = importPath.substring(0, importPath.length - 5);
       }
@@ -575,7 +575,7 @@ class SwaggerToDartGenerator {
     return imports..sort();
   }
 
-  /// Создаёт новый файл с классом.
+  /// Creates a new file with class.
   static String _createNewFileWithClass(
     String className,
     Map<String, dynamic> schema,
@@ -590,16 +590,16 @@ class SwaggerToDartGenerator {
     buffer.writeln('/*SWAGGER-TO-DART*/');
     buffer.writeln();
 
-    // Собираем зависимости для импортов
+    // Collect dependencies for imports
     final schemaName = override?.className ?? _toPascalCase(className);
     final dependencies = _collectDependencies(schema, context, schemaName, outputDir);
     final modelImports = _generateImportsForDependencies(dependencies, outputDir, '$fileName.dart');
 
-    // Добавляем импорты и part'ы в зависимости от стиля
+    // Add imports and parts depending on style
     final strategy = GeneratorFactory.createStrategy(style, customStyleName: config?.customStyleName);
     final styleImports = strategy.generateImportsAndParts(fileName);
     
-    // Объединяем импорты: сначала импорты моделей, потом стилевые
+    // Combine imports: first model imports, then style imports
     final allImports = <String>[...modelImports, ...styleImports];
     for (final import in allImports) {
       buffer.writeln(import);
@@ -617,7 +617,7 @@ class SwaggerToDartGenerator {
     return buffer.toString();
   }
 
-  /// Обновляет существующий файл с enum, заменяя содержимое между маркерами.
+  /// Updates existing file with enum, replacing content between markers.
   static String _updateExistingFileWithEnum(
     String existingContent,
     String enumName,
@@ -633,7 +633,7 @@ class SwaggerToDartGenerator {
     final stopIndex = existingContent.indexOf(stopMarker);
 
     if (startIndex == -1 || stopIndex == -1 || startIndex >= stopIndex) {
-      // Маркеры не найдены, создаём новый файл
+      // Markers not found, create new file
       return _createNewFileWithEnum(
         enumName,
         schema,
@@ -651,7 +651,7 @@ class SwaggerToDartGenerator {
     return '$before\n$newEnumCode\n$after';
   }
 
-  /// Обновляет существующий файл с классом, заменяя содержимое между маркерами.
+  /// Updates existing file with class, replacing content between markers.
   static String _updateExistingFileWithClass(
     String existingContent,
     String className,
@@ -669,7 +669,7 @@ class SwaggerToDartGenerator {
     final stopIndex = existingContent.indexOf(stopMarker);
 
     if (startIndex == -1 || stopIndex == -1 || startIndex >= stopIndex) {
-      // Маркеры не найдены, создаём новый файл
+      // Markers not found, create new file
       return _createNewFileWithClass(
         className,
         schema,
@@ -689,7 +689,7 @@ class SwaggerToDartGenerator {
     return '$before\n$newClassCode\n$after';
   }
 
-  /// Преобразует имя в snake_case для имени файла.
+  /// Converts name to snake_case for file name.
   static String _toSnakeCase(String name) {
     final pascal = _toPascalCase(name);
     if (pascal.isEmpty) return '';
@@ -712,7 +712,7 @@ class SwaggerToDartGenerator {
     final schemas = _extractSchemas(spec, version);
     result.addAll(schemas);
 
-    // Для OpenAPI 3 также добавляем components
+    // For OpenAPI 3 also add components
     if (version == SpecVersion.openApi3) {
       final components = spec['components'] as Map<String, dynamic>?;
       if (components != null) {
@@ -755,7 +755,7 @@ class SwaggerToDartGenerator {
     final enumValues = schema['enum'] as List?;
     if (enumValues == null || enumValues.isEmpty) return '';
 
-    // Поддержка x-enumNames / x-enum-varnames
+    // Support x-enumNames / x-enum-varnames
     final enumNames = schema['x-enumNames'] as List? ?? schema['x-enum-varnames'] as List?;
     final hasCustomNames = enumNames != null && enumNames.length == enumValues.length;
 
@@ -767,10 +767,10 @@ class SwaggerToDartGenerator {
       String enumValue;
       
       if (hasCustomNames && enumNames[i] is String) {
-        // Используем кастомное имя из x-enumNames / x-enum-varnames
+        // Use custom name from x-enumNames / x-enum-varnames
         enumValue = _toEnumValueName(enumNames[i] as String);
       } else if (value is String) {
-        // Преобразуем строку в валидное имя enum значения
+        // Convert string to valid enum value name
         enumValue = _toEnumValueName(value);
       } else {
         enumValue = 'value$i';
@@ -805,7 +805,7 @@ class SwaggerToDartGenerator {
   }
 
   static String _toEnumValueName(String value) {
-    // Преобразуем строку в валидное имя enum значения
+    // Convert string to valid enum value name
     final cleaned = value
         .replaceAll(RegExp(r'[^A-Za-z0-9_]'), '_')
         .replaceAll(RegExp(r'_+'), '_')
@@ -825,12 +825,12 @@ class SwaggerToDartGenerator {
     Config? config,
     SchemaOverride? override,
   }) {
-    // Обработка allOf (OpenAPI 3)
+    // Handle allOf (OpenAPI 3)
     if (schema.containsKey('allOf') && schema['allOf'] is List) {
       return _generateAllOfClass(name, schema, context, style, config: config, override: override);
     }
 
-    // Обработка oneOf/anyOf (OpenAPI 3)
+    // Handle oneOf/anyOf (OpenAPI 3)
     final oneOf = schema['oneOf'] as List?;
     final anyOf = schema['anyOf'] as List?;
     if (oneOf != null || anyOf != null) {
@@ -848,8 +848,8 @@ class SwaggerToDartGenerator {
     final properties = schema['properties'] as Map<String, dynamic>? ?? {};
     final additionalProps = schema['additionalProperties'];
 
-    // Если объект только с additionalProperties и без properties — генерируем
-    // одинаково для всех стилей.
+    // If object only has additionalProperties and no properties — generate
+    // the same for all styles.
     if (properties.isEmpty && additionalProps != null && additionalProps != false) {
       final valueType = additionalProps is Map<String, dynamic>
           ? _dartTypeForSchema(additionalProps, context, required: true)
@@ -881,7 +881,7 @@ class SwaggerToDartGenerator {
       return classBuffer.toString();
     }
 
-    // Общая информация по полям
+    // General field information
     final fieldInfos = <String, FieldInfo>{};
 
     properties.forEach((propName, propSchemaRaw) {
@@ -890,15 +890,15 @@ class SwaggerToDartGenerator {
       };
       final propNullable = propSchema['nullable'] as bool? ?? false;
 
-      // Правило nullable / required:
-      // - Если поле присутствует в схеме, оно считается required по умолчанию.
-      // - Если у поля явно указано nullable: true, оно генерируется как nullable.
+      // Nullable / required rule:
+      // - If field is present in schema, it is considered required by default.
+      // - If field explicitly has nullable: true, it is generated as nullable.
       final isNonNullable = !propNullable;
 
-      // Применяем переопределение имени поля, если есть
+      // Apply field name override if present
       final fieldName = override?.fieldNames?[propName] ?? propName;
 
-      // Применяем маппинг типов, если есть
+      // Apply type mapping if present
       String dartType;
       if (override?.typeMapping != null && override!.typeMapping!.isNotEmpty) {
         final typeFromSchema = propSchema['type'] as String?;
@@ -916,24 +916,24 @@ class SwaggerToDartGenerator {
 
       fieldInfos[propName] = FieldInfo(
         name: fieldName,
-        jsonKey: propName, // Оригинальный JSON ключ
+        jsonKey: propName, // Original JSON key
         dartType: dartType,
         isRequired: isNonNullable,
         schema: propSchema,
       );
     });
 
-    // Определяем, нужно ли использовать @JsonKey
-    // Приоритет: override.useJsonKey > config.useJsonKey > false
+    // Determine if @JsonKey should be used
+    // Priority: override.useJsonKey > config.useJsonKey > false
     final useJsonKey = override?.useJsonKey ?? config?.useJsonKey ?? false;
 
-    // Используем стратегию для генерации класса
+    // Use strategy for class generation
     final strategy = GeneratorFactory.createStrategy(style, customStyleName: config?.customStyleName);
     return strategy.generateFullClass(
       className,
       fieldInfos,
       (jsonKey, schema) {
-        // Определяем, является ли поле required на основе FieldInfo
+        // Determine if field is required based on FieldInfo
         final fieldInfo = fieldInfos[jsonKey];
         final isRequired = fieldInfo?.isRequired ?? false;
         return _fromJsonExpression('json[\'$jsonKey\']', schema, context, isRequired: isRequired);
@@ -943,9 +943,9 @@ class SwaggerToDartGenerator {
     );
   }
 
-  /// Генерирует класс для allOf схемы.
+  /// Generates class for allOf schema.
   /// 
-  /// Обрабатывает вложенные комбинации allOf и случаи множественного наследования.
+  /// Handles nested allOf combinations and multiple inheritance cases.
   static String _generateAllOfClass(
     String name,
     Map<String, dynamic> schema,
@@ -959,17 +959,17 @@ class SwaggerToDartGenerator {
 
     final allProperties = <String, dynamic>{};
     final allRequired = <String>[];
-    final processedRefs = <String>{}; // Для предотвращения циклических зависимостей
+    final processedRefs = <String>{}; // To prevent circular dependencies
 
-    // Рекурсивная функция для обработки элементов allOf
+    // Recursive function to process allOf items
     void processAllOfItem(dynamic item, String? parentName) {
       if (item is! Map<String, dynamic>) return;
 
-      // Обработка $ref
+      // Handle $ref
       if (item.containsKey(r'$ref')) {
         final ref = item[r'$ref'] as String;
         
-        // Проверка на циклические зависимости
+        // Check for circular dependencies
         if (processedRefs.contains(ref)) {
           Logger.warning(
             'Обнаружена циклическая зависимость для $ref в схеме "$name". '
@@ -989,7 +989,7 @@ class SwaggerToDartGenerator {
           return;
         }
 
-        // Рекурсивно обрабатываем вложенные allOf
+        // Recursively process nested allOf
         if (refSchema.containsKey('allOf')) {
           final refAllOf = refSchema['allOf'] as List;
           Logger.verbose('Обнаружен вложенный allOf в $ref (${refAllOf.length} элементов)');
@@ -997,7 +997,7 @@ class SwaggerToDartGenerator {
             processAllOfItem(refItem, ref.split('/').last);
           }
         } else {
-          // Обрабатываем свойства из ref схемы
+          // Process properties from ref schema
           final props = refSchema['properties'] as Map<String, dynamic>? ?? {};
           allProperties.addAll(props);
           final req = (refSchema['required'] as List?)?.cast<String>() ?? <String>[];
@@ -1006,13 +1006,13 @@ class SwaggerToDartGenerator {
 
         processedRefs.remove(ref);
       } else {
-        // Обработка обычных свойств
+        // Handle regular properties
         final props = item['properties'] as Map<String, dynamic>? ?? {};
         allProperties.addAll(props);
         final req = (item['required'] as List?)?.cast<String>() ?? <String>[];
         allRequired.addAll(req);
 
-        // Если элемент сам содержит allOf, обрабатываем рекурсивно
+        // If item itself contains allOf, process recursively
         if (item.containsKey('allOf')) {
           final nestedAllOf = item['allOf'] as List;
           Logger.verbose('Обнаружен вложенный allOf в элементе схемы "$name" (${nestedAllOf.length} элементов)');
@@ -1023,7 +1023,7 @@ class SwaggerToDartGenerator {
       }
     }
 
-    // Обрабатываем все элементы allOf
+    // Process all allOf items
     for (final item in allOf) {
       processAllOfItem(item, name);
     }
@@ -1044,10 +1044,10 @@ class SwaggerToDartGenerator {
     return _generateClass(name, mergedSchema, context, style, config: config, override: override);
   }
 
-  /// Генерирует класс для oneOf/anyOf схем.
+  /// Generates class for oneOf/anyOf schema.
   /// 
-  /// Для oneOf/anyOf генерируется безопасная обёртка с dynamic значением.
-  /// В будущем здесь можно будет генерировать union-типы, особенно с discriminator.
+  /// For oneOf/anyOf a safe wrapper with dynamic value is generated.
+  /// In the future, union types can be generated here, especially with discriminator.
   static String _generateOneOfClass(
     String name,
     Map<String, dynamic> schema,
@@ -1060,7 +1060,7 @@ class SwaggerToDartGenerator {
     final hasOneOf = oneOf != null && oneOf.isNotEmpty;
     final hasAnyOf = anyOf != null && anyOf.isNotEmpty;
     
-    // Определяем типы для логирования
+    // Determine types for logging
     final possibleTypes = <String>[];
     if (hasOneOf) {
       for (final item in oneOf) {
@@ -1095,7 +1095,7 @@ class SwaggerToDartGenerator {
       }
     }
 
-    // Проверяем наличие discriminator (для будущей поддержки union-типов)
+    // Check for discriminator (for future union type support)
     final discriminator = schema['discriminator'] as Map<String, dynamic>?;
     final hasDiscriminator = discriminator != null;
     
@@ -1107,7 +1107,7 @@ class SwaggerToDartGenerator {
       );
     }
 
-    // Логируем информацию о возможных типах
+    // Log information about possible types
     if (possibleTypes.isNotEmpty) {
       final typesStr = possibleTypes.join(', ');
       Logger.verbose(
@@ -1121,7 +1121,7 @@ class SwaggerToDartGenerator {
       );
     }
 
-    // Генерируем безопасную обёртку
+    // Generate safe wrapper
     final buffer = StringBuffer()
       ..writeln('/// Класс для ${hasOneOf ? 'oneOf' : 'anyOf'} схемы "$name".')
       ..writeln('///')
@@ -1162,24 +1162,24 @@ class SwaggerToDartGenerator {
     GenerationContext context, {
     required bool required,
   }) {
-    // Обработка $ref
+    // Handle $ref
     final ref = schema[r'$ref'] as String?;
     if (ref != null) {
       final refSchema = context.resolveRef(ref, context: null);
       if (refSchema != null) {
-        // Проверяем, является ли это enum'ом
+        // Check if this is an enum
         if (context.isEnum(refSchema)) {
           final enumName = context.getEnumTypeName(refSchema, ref.split('/').last);
           if (enumName != null) {
             return required ? enumName : '$enumName?';
           }
         }
-        // Иначе это класс
+        // Otherwise it's a class
         final refName = ref.split('/').last;
         final baseType = _toPascalCase(refName);
         return required ? baseType : '$baseType?';
       }
-      // Если не удалось разрешить, используем имя из ref
+      // If failed to resolve, use name from ref
       final refName = ref.split('/').last;
       final baseType = _toPascalCase(refName);
       return required ? baseType : '$baseType?';
@@ -1199,7 +1199,7 @@ class SwaggerToDartGenerator {
     String base;
     switch (type) {
       case 'integer':
-        // Различаем int и num
+        // Distinguish int and num
         if (format == 'int64' || format == 'int32') {
           base = 'int';
         } else {
@@ -1218,12 +1218,12 @@ class SwaggerToDartGenerator {
           final itemType = _dartTypeForSchema(items, context, required: true);
           base = 'List<$itemType>';
         } else {
-          // Массив без items - генерируем List<dynamic>
+          // Array without items - generate List<dynamic>
           base = 'List<dynamic>';
         }
         break;
       case 'object':
-        // Проверяем, есть ли additionalProperties
+        // Check if additionalProperties exists
         final additionalProps = schema['additionalProperties'];
         if (additionalProps != null && additionalProps != false) {
           if (additionalProps is Map<String, dynamic>) {
@@ -1247,8 +1247,8 @@ class SwaggerToDartGenerator {
         base = 'dynamic';
     }
 
-    // Поле non-nullable только если required=true И nullable=false
-    // required уже учитывает nullable из схемы, поэтому просто используем required
+    // Field non-nullable only if required=true AND nullable=false
+    // required already accounts for nullable from schema, so just use required
     return required ? base : '$base?';
   }
 
@@ -1425,7 +1425,7 @@ class SwaggerToDartGenerator {
     return parts.map((p) => p[0].toUpperCase() + p.substring(1)).join();
   }
 
-  /// Проверяет схемы на подозрительные конструкции.
+  /// Checks schemas for suspicious constructs.
   static void _validateSchemas(
     Map<String, dynamic> schemas,
     GenerationContext context,
@@ -1436,17 +1436,17 @@ class SwaggerToDartGenerator {
         ...?schemaRaw as Map<String, dynamic>?,
       };
       
-      // Проверка enum'ов (включая пустые)
+      // Check enums (including empty ones)
       final enumValues = schema['enum'] as List?;
       if (enumValues != null) {
         _validateEnum(schema, schemaName, lintConfig);
-        // Если это enum, не проверяем как обычную схему
+        // If this is an enum, don't check as regular schema
         if (context.isEnum(schema)) {
           return;
         }
       }
 
-              // Проверка пустого объекта (только для не-enum схем и не-oneOf/anyOf/allOf)
+              // Check for empty object (only for non-enum schemas and non-oneOf/anyOf/allOf)
               if (lintConfig.isEnabled(LintRuleId.emptyObject) && 
                   !context.isEnum(schema) &&
                   !schema.containsKey('oneOf') &&
@@ -1469,7 +1469,7 @@ class SwaggerToDartGenerator {
           ...?propSchemaRaw as Map<String, dynamic>?,
         };
         
-        // Проверка на отсутствие type
+        // Check for missing type
         if (lintConfig.isEnabled(LintRuleId.missingType)) {
           if (!propSchema.containsKey('type') && !propSchema.containsKey(r'$ref')) {
             _reportLintIssue(
@@ -1481,7 +1481,7 @@ class SwaggerToDartGenerator {
           }
         }
 
-        // Проверка на подозрительные поля (например, id без nullable и без required)
+        // Check for suspicious fields (e.g., id without nullable and without required)
         if (lintConfig.isEnabled(LintRuleId.suspiciousIdField)) {
           if (propName == 'id' || propName.endsWith('_id') || propName.endsWith('Id')) {
             final isNullable = propSchema['nullable'] as bool? ?? false;

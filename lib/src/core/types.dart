@@ -1,19 +1,19 @@
-/// Тип Swagger/OpenAPI-спецификации.
+/// Swagger/OpenAPI specification type.
 enum SpecVersion { swagger2, openApi3 }
 
-/// Стиль генерации моделей.
+/// Model generation style.
 enum GenerationStyle {
-  /// Простые Dart-классы с ручной реализацией fromJson/toJson.
+  /// Simple Dart classes with manual fromJson/toJson implementation.
   plainDart,
 
-  /// Классы с аннотацией @JsonSerializable из пакета json_serializable.
+  /// Classes with @JsonSerializable annotation from json_serializable package.
   jsonSerializable,
 
-  /// Иммутабельные классы c использованием пакета freezed.
+  /// Immutable classes using freezed package.
   freezed,
 }
 
-/// Результат генерации моделей.
+/// Model generation result.
 class GenerationResult {
   final String outputDirectory;
   final List<String> generatedFiles;
@@ -32,7 +32,7 @@ class GenerationResult {
   });
 }
 
-/// Контекст генерации для хранения всех схем и enum'ов.
+/// Generation context for storing all schemas and enums.
 class GenerationContext {
   final Map<String, dynamic> allSchemas;
   final SpecVersion version;
@@ -45,12 +45,12 @@ class GenerationContext {
     required this.version,
   });
 
-  /// Получить схему по $ref.
+  /// Get schema by $ref.
   Map<String, dynamic>? resolveRef(String ref, {String? context}) {
     final parts = ref.split('/');
     if (parts.isEmpty) return null;
 
-    // Убираем # если есть
+    // Remove # if present
     final cleanParts = parts.where((p) => p.isNotEmpty && p != '#').toList();
 
     Map<String, dynamic> current = allSchemas;
@@ -61,9 +61,9 @@ class GenerationContext {
         if (result is Map<String, dynamic>) {
           return result;
         } else {
-          // Схема не найдена - логируем предупреждение
-          // Импортируем Logger только здесь, чтобы избежать циклических зависимостей
-          // Используем динамический импорт через строку
+          // Schema not found - log warning
+          // Import Logger only here to avoid circular dependencies
+          // Use dynamic import via string
           return null;
         }
       } else {
@@ -71,7 +71,7 @@ class GenerationContext {
         if (next is Map<String, dynamic>) {
           current = next;
         } else {
-          // Промежуточный путь не найден
+          // Intermediate path not found
           return null;
         }
       }
@@ -79,13 +79,13 @@ class GenerationContext {
     return null;
   }
 
-  /// Проверить, является ли схема enum'ом.
+  /// Check if schema is an enum.
   bool isEnum(Map<String, dynamic> schema) {
     final enumValues = schema['enum'] as List?;
     return enumValues != null && enumValues.isNotEmpty;
   }
 
-  /// Получить имя enum типа для схемы.
+  /// Get enum type name for schema.
   String? getEnumTypeName(Map<String, dynamic> schema, String? suggestedName) {
     if (!isEnum(schema)) return null;
     final enumValues = schema['enum'] as List?;
@@ -95,7 +95,7 @@ class GenerationContext {
       return enumTypes[suggestedName];
     }
 
-    // Генерируем уникальное имя для enum
+    // Generate unique name for enum
     String baseName = suggestedName ?? 'Enum';
     int counter = 1;
     String enumName = baseName;

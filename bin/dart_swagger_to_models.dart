@@ -101,7 +101,7 @@ void main(List<String> arguments) async {
   final isQuiet = argResults['quiet'] as bool;
   final changedOnly = argResults['changed-only'] as bool;
 
-  // Устанавливаем уровень логирования
+  // Set logging level
   if (isQuiet) {
     Logger.setLevel(LogLevel.quiet);
   } else if (isVerbose) {
@@ -113,7 +113,7 @@ void main(List<String> arguments) async {
   GenerationStyle? style;
   String? customStyleName;
   if (styleName != null) {
-    // Пытаемся распарсить как встроенный стиль
+    // Try to parse as built-in style
     switch (styleName.toLowerCase()) {
       case 'plain_dart':
         style = GenerationStyle.plainDart;
@@ -125,7 +125,7 @@ void main(List<String> arguments) async {
         style = GenerationStyle.freezed;
         break;
       default:
-        // Если не встроенный стиль, считаем кастомным
+        // If not built-in style, consider it custom
         customStyleName = styleName;
         break;
     }
@@ -140,22 +140,22 @@ void main(List<String> arguments) async {
   }
 
   try {
-    // Загружаем конфигурацию, если она есть
+    // Load configuration if present
     Config? config;
     try {
       config = await ConfigLoader.loadConfig(configPath, projectDir);
       Logger.verbose('Конфигурация загружена из ${configPath ?? 'dart_swagger_to_models.yaml'}');
     } catch (e) {
       Logger.warning('Не удалось загрузить конфигурацию: $e');
-      // Продолжаем без конфигурации
+      // Continue without configuration
     }
 
-    // Если указан кастомный стиль через CLI, добавляем его в конфиг
+    // If custom style is specified via CLI, add it to config
     if (customStyleName != null) {
       if (config != null) {
         config = Config(
           defaultStyle: config.defaultStyle,
-          customStyleName: customStyleName, // CLI имеет приоритет
+          customStyleName: customStyleName, // CLI has priority
           outputDir: config.outputDir,
           projectDir: config.projectDir,
           useJsonKey: config.useJsonKey,
@@ -163,7 +163,7 @@ void main(List<String> arguments) async {
           schemaOverrides: config.schemaOverrides,
         );
       } else {
-        // Если конфига нет, создаём новый с кастомным стилем
+        // If no config, create new one with custom style
         config = Config(
           customStyleName: customStyleName,
         );
@@ -181,7 +181,7 @@ void main(List<String> arguments) async {
       changedOnly: changedOnly,
     );
 
-    // Форматируем файлы, если указан флаг --format
+    // Format files if --format flag is specified
     if (shouldFormat) {
       Logger.info('Форматирование сгенерированных файлов...');
       for (final file in result.generatedFiles) {
@@ -202,10 +202,10 @@ void main(List<String> arguments) async {
       }
     }
 
-    // Выводим сводку
+    // Print summary
     _printSummary(result);
 
-    // Выводим предупреждения, если есть
+    // Print warnings if any
     if (Logger.warnings.isNotEmpty && !isQuiet) {
       stdout.writeln();
       stdout.writeln('Предупреждения:');
@@ -214,7 +214,7 @@ void main(List<String> arguments) async {
       }
     }
 
-    // Выводим ошибки, если есть
+    // Print errors if any
     if (Logger.errors.isNotEmpty) {
       stderr.writeln();
       stderr.writeln('Ошибки:');
