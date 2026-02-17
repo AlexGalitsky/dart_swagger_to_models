@@ -4,20 +4,19 @@
 
 ### Оглавление
 
-1. [Базовая генерация](#1-базовая-генерация)
-2. [Кастомная директория и стиль](#2-кастомная-директория-и-стиль)
-3. [Использование стиля `freezed`](#3-использование-стиля-freezed)
-4. [Перегенерация существующих файлов](#4-перегенерация-существующих-файлов)
-5. [Конфигурационный файл](#5-конфигурационный-файл)
-6. [Lint правила валидации спецификаций](#6-lint-правила-валидации-спецификаций)
-7. [Правила null-safety](#7-правила-null-safety)
-8. [Логирование и управление выводом](#8-логирование-и-управление-выводом)
-9. [Схемы композиции OpenAPI (allOf, oneOf, anyOf)](#9-схемы-композиции-openapi-allof-oneof-anyof)
-10. [Инкрементальная генерация](#10-инкрементальная-генерация)
-11. [Кастомные стили генерации (подключаемые стили)](#11-кастомные-стили-генерации-подключаемые-стили)
-12. [Интеграция с build_runner](#12-интеграция-с-build_runner)
+1. [Базовая генерация](#1-базовая-генерация)  
+2. [Кастомная директория и стиль](#2-кастомная-директория-и-стиль)  
+3. [Использование стиля `freezed`](#3-использование-стиля-freezed)  
+4. [Перегенерация существующих файлов](#4-перегенерация-существующих-файлов)  
+5. [Конфигурационный файл](#5-конфигурационный-файл)  
+6. [Lint правила валидации спецификаций](#6-lint-правила-валидации-спецификаций)  
+7. [Правила null-safety](#7-правила-null-safety)  
+8. [Логирование и управление выводом](#8-логирование-и-управление-выводом)  
+9. [Схемы композиции OpenAPI (allOf, oneOf, anyOf)](#9-схемы-композиции-openapi-allof-oneof-anyof)  
+10. [Инкрементальная генерация](#10-инкрементальная-генерация)  
+11. [Кастомные стили генерации (подключаемые стили)](#11-кастомные-стили-генерации-подключаемые-стили)  
+12. [Интеграция с build_runner](#12-интеграция-с-build_runner)  
 13. [FAQ / Решение проблем](#13-faq--решение-проблем)
-
 
 ### 1. Базовая генерация
 
@@ -111,6 +110,8 @@ schemas:
 
 **Приоритет**: аргументы CLI > конфигурационный файл > значения по умолчанию
 
+### 6. Lint правила валидации спецификаций
+
 **Опции конфигурации:**
 - `defaultStyle`: стиль генерации по умолчанию (`plain_dart`, `json_serializable`, `freezed`)
 - `outputDir`: директория для выходных файлов по умолчанию
@@ -159,13 +160,19 @@ schemas:
     className: CustomUser
 ```
 
-**Пример с `useJsonKey`:**
+**Пример с `useJsonKey`, генерацией документации и валидацией:**
 
-Когда установлено `useJsonKey: true`, поля с snake_case JSON-ключами автоматически получат аннотации `@JsonKey`:
+Когда установлено `useJsonKey: true`, поля с snake_case JSON-ключами автоматически получат аннотации `@JsonKey`.
+Когда установлено `generateDocs: true` (значение по умолчанию), генератор добавляет DartDoc-комментарии из `description` / `example`
+как на уровне схемы, так и на уровне отдельных полей (если описания заданы).
+Когда установлено `generateValidation: true`, генератор дополнительно создаёт простые helpers `validate()` на основе ограничений схемы
+(`minimum`/`maximum`, `minLength`/`maxLength`, `minItems`/`maxItems`):
 
 ```yaml
 # dart_swagger_to_models.yaml
 useJsonKey: true
+generateDocs: true
+generateValidation: true
 ```
 
 Для схемы с полями `user_id` и `user_name` генератор создаст:
@@ -193,7 +200,7 @@ dart run dart_swagger_to_models:dart_swagger_to_models \
   --config custom_config.yaml
 ```
 
-### 6. Правила null-safety
+### 7. Правила null-safety
 
 Генератор использует простое правило:
 - Если поле присутствует в `properties` схемы — оно **required по умолчанию**.
@@ -204,7 +211,42 @@ dart run dart_swagger_to_models:dart_swagger_to_models \
 - `json_serializable`
 - `freezed`
 
-### 7. Логирование и управление выводом
+### 8. Валидация (validation helpers)
+
+Если в `dart_swagger_to_models.yaml` установлено `generateValidation: true`, генератор создаёт простые helpers для валидации
+на основе ограничений схемы:
+
+- Числовые поля (`int`, `num`, `double`):
+  - `minimum` / `maximum` (или `min` / `max`).
+- Строковые поля (`String`):
+  - `minLength` / `maxLength`.
+- Массивы (`List<...>`):
+  - `minItems` / `maxItems`.
+
+Для каждого класса `User` генерируется соответствующий extension:
+
+```dart
+extension UserValidation on User {
+  /// Возвращает список сообщений об ошибках валидации. Пустой, если объект валиден.
+  List<String> validate() {
+    final errors = <String>[];
+    // ... сгенерированные проверки на основе схемы ...
+    return errors;
+  }
+}
+```
+
+Типичный способ использования:
+
+```dart
+final user = User(...);
+final errors = user.validate();
+if (errors.isNotEmpty) {
+  // обработать ошибки валидации
+}
+```
+
+### 9. Логирование и управление выводом
 
 Генератор предоставляет гибкие опции логирования:
 
@@ -248,7 +290,55 @@ dart run dart_swagger_to_models:dart_swagger_to_models \
 - Неподдерживаемых или неоднозначных конструкций схем
 - Предупреждений о подозрительных спецификациях (например, поля `id` без `nullable: true`, но и без `required`)
 
-### 8. Схемы композиции OpenAPI (allOf, oneOf, anyOf)
+### 9. Watch режим
+
+Можно автоматически перегенерировать модели при изменении файла спецификации с помощью флага `--watch`.
+
+> **Важно:** Watch режим поддерживается только для локальных файлов, переданных в `--input`. URL (`http://...` / `https://...`) в watch режиме использовать нельзя.
+
+Пример:
+
+```bash
+dart run dart_swagger_to_models:dart_swagger_to_models \
+  --input swagger/api.yaml \
+  --output-dir lib/models \
+  --watch
+```
+
+Поведение:
+
+- Один запуск генерации на старте.
+- Наблюдение за файлом спецификации и автоматическая регенерация моделей при сохранении (с небольшим debounce).
+- Учитываются остальные флаги:
+  - `--style`, `--project-dir`, `--config`, `--changed-only`, `--format`,
+  - флаги логирования `--verbose` / `--quiet`.
+
+### 10. Интерактивный режим
+
+Интерактивный режим позволяет перед генерацией посмотреть список схем и подтвердить (или отменить) запуск.
+
+> **Важно:** интерактивный режим поддерживается только для локальных файлов, переданных в `--input`. URL (`http://...` / `https://...`) использовать нельзя.
+
+Пример:
+
+```bash
+dart run dart_swagger_to_models:dart_swagger_to_models \
+  --input swagger/api.yaml \
+  --output-dir lib/models \
+  --interactive
+```
+
+Поведение:
+
+- Загружает спецификацию и определяет список схем.
+- Выводит список имён схем в консоль.
+- Спрашивает: `Proceed with generation for all listed schemas? [y/N]:`
+  - `y` / `yes` (без учёта регистра) → генерация продолжается.
+  - Любой другой ответ (или пустой ввод) → генерация отменяется без изменений.
+
+Флаг `--interactive` можно комбинировать с остальными опциями (`--style`, `--project-dir`, `--config`, `--changed-only`, `--format`, `--verbose`, `--quiet`).
+
+### 11. Схемы композиции OpenAPI (allOf, oneOf, anyOf)
 
 Генератор поддерживает схемы композиции OpenAPI 3.0:
 
@@ -288,7 +378,15 @@ components:
 - Подробное логирование обработки вложенных `allOf` (используйте `--verbose`)
 
 **`oneOf` / `anyOf` (объединённые типы):**
-Для схем `oneOf` и `anyOf` генератор создаёт безопасную обёртку с `dynamic` значением:
+
+Генератор поддерживает `oneOf` / `anyOf` в двух режимах:
+
+- **Без discriminator** — безопасная обёртка с `dynamic` значением.
+- **С discriminator и enum-значениями у вариантов** — union-подобный класс с discriminator и типизированными вариантами.
+
+#### 9.1 oneOf/anyOf без discriminator (dynamic-обёртка)
+
+Для схем `oneOf` и `anyOf` без discriminator генератор создаёт безопасную обёртку с `dynamic` значением:
 
 ```yaml
 components:
@@ -316,8 +414,7 @@ components:
 ```dart
 /// Класс для oneOf схемы "Value".
 ///
-/// Внимание: Для oneOf схем генерируется обёртка с dynamic значением.
-/// В будущих версиях будет поддержка генерации union-типов.
+/// Внимание: для схем oneOf/anyOf без discriminator генерируется обёртка с dynamic значением.
 /// Возможные типы: StringValue, NumberValue.
 class Value {
   /// Значение (может быть одним из возможных типов).
@@ -344,14 +441,130 @@ class Value {
 ```
 
 **Возможности:**
-- Безопасные обёртки с `dynamic` и понятными сообщениями об ошибках
-- Обнаружение и логирование использования `discriminator` (архитектура подготовлена для будущей генерации union-типов)
-- Подробное логирование о возможных типах в схемах `oneOf`/`anyOf` (используйте `--verbose`)
-- Понятные комментарии в документации, объясняющие ограничения
 
-**Примечание:** Полная генерация union-типов (особенно с `discriminator`) запланирована на будущие версии. В настоящее время схемы `oneOf`/`anyOf` генерируют безопасные обёртки, требующие ручной валидации типов.
+- Безопасные обёртки с `dynamic` и понятными сообщениями об ошибках.
+- Логирование возможных типов в схемах `oneOf`/`anyOf` (используйте `--verbose`).
 
-### 9. Инкрементальная генерация
+#### 9.2 oneOf/anyOf с discriminator (union-подобный класс)
+
+Если схема использует `discriminator`, и каждая схема-вариант в `oneOf`/`anyOf`
+определяет это discriminator-свойство как enum с одним литералом (например, `'cat'`, `'dog'`),
+генератор создаёт union-подобный класс:
+
+```yaml
+components:
+  schemas:
+    Cat:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: ['cat']
+        meow:
+          type: boolean
+
+    Dog:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: ['dog']
+        bark:
+          type: boolean
+
+    Pet:
+      oneOf:
+        - $ref: '#/components/schemas/Cat'
+        - $ref: '#/components/schemas/Dog'
+      discriminator:
+        propertyName: type
+```
+
+Сгенерированный union-класс `Pet` будет примерно таким:
+
+```dart
+class Pet {
+  final String type;
+
+  /// Значение, когда union содержит `Cat`.
+  final Cat? cat;
+
+  /// Значение, когда union содержит `Dog`.
+  final Dog? dog;
+
+  const Pet._({
+    required this.type,
+    this.cat,
+    this.dog,
+  })  : cat = cat,
+        dog = dog;
+
+  factory Pet.fromCat(Cat value) {
+    return Pet._(
+      type: 'cat',
+      cat: value,
+    );
+  }
+
+  factory Pet.fromDog(Dog value) {
+    return Pet._(
+      type: 'dog',
+      dog: value,
+    );
+  }
+
+  factory Pet.fromJson(Map<String, dynamic> json) {
+    final disc = json['type'] as String?;
+    if (disc == null) {
+      throw ArgumentError('Missing discriminator "type" for Pet');
+    }
+    switch (disc) {
+      case 'cat':
+        return Pet.fromCat(Cat.fromJson(json));
+      case 'dog':
+        return Pet.fromDog(Dog.fromJson(json));
+      default:
+        throw ArgumentError('Unknown discriminator value "$disc" for Pet');
+    }
+  }
+
+  Map<String, dynamic> toJson() {
+    switch (type) {
+      case 'cat':
+        return cat!.toJson();
+      case 'dog':
+        return dog!.toJson();
+      default:
+        throw StateError('Unknown discriminator value "$type" for Pet');
+    }
+  }
+
+  /// Удобный helper для pattern matching по вариантам union-а.
+  T when<T>({
+    required T Function(Cat value) cat,
+    required T Function(Dog value) dog,
+  }) {
+    switch (type) {
+      case 'cat':
+        return cat(this.cat!);
+      case 'dog':
+        return dog(this.dog!);
+      default:
+        throw StateError('Unknown discriminator value "$type" for Pet');
+    }
+  }
+}
+```
+
+**Возможности (с discriminator):**
+
+- Типобезопасная десериализация JSON на основе discriminator.
+- Union-подобный класс с одним nullable-полем на вариант.
+- `when`/`maybeWhen` helpers для удобного pattern matching.
+
+Подробные архитектурные заметки и trade-off’ы см. в `doc/en/UNION_TYPES_NOTES.md`.
+
+### 10. Инкрементальная генерация
 
 Генератор поддерживает инкрементальную генерацию для улучшения производительности при работе с большими спецификациями:
 
@@ -401,7 +614,7 @@ dart run dart_swagger_to_models:dart_swagger_to_models \
 
 **Примечание:** Если вы хотите принудительно выполнить полную регенерацию, просто опустите флаг `--changed-only` или удалите файл кэша.
 
-### 10. Кастомные стили генерации (подключаемые стили)
+### 11. Кастомные стили генерации (подключаемые стили)
 
 Генератор поддерживает кастомные стили генерации, которые вы можете создать и зарегистрировать:
 
@@ -440,9 +653,62 @@ dart run dart_swagger_to_models:dart_swagger_to_models \
 
 **Важно:** Кастомные стили должны быть зарегистрированы в вашем Dart коде перед запуском генератора. Обычно это делается в build-скрипте или файле инициализации.
 
-**Полное руководство:** См. `docs/ru/CUSTOM_STYLES.md` для подробного пошагового руководства по созданию кастомных стилей, включая полный пример Equatable.
+**Полное руководство:** См. `doc/ru/CUSTOM_STYLES.md` для подробного пошагового руководства по созданию кастомных стилей, включая полный пример Equatable.
 
-### 11. Интеграция с build_runner
+### 12. Интеграция с build_runner
+
+### 13. FAQ / Решение проблем
+
+**В: Получаю ошибку “No schemas found in specification (definitions/components.schemas)”. Что это значит?**  
+О: Генератор не нашёл ни одной схемы в `definitions` (Swagger 2.0) или `components.schemas` (OpenAPI 3.x).  
+Проверьте, что:
+
+- спецификация действительно содержит схемы в одной из этих секций;
+- `$ref` ссылаются именно на них (например, `#/components/schemas/User`);
+- вы передаёте правильный файл через `--input`.
+
+---
+
+**В: Существующий Dart-файл не обновляется генератором.**  
+О: Убедитесь, что:
+
+- файл содержит маркер `/*SWAGGER-TO-DART*/` в начале;
+- имя схемы совпадает с именем файла (например, схема `User` → файл `user.dart`) или переопределено через `className` в конфиге;
+- вы передаёте корректный `--project-dir` (корень проекта), чтобы сканер нашёл файл;
+- код, который нужно перегенерировать, находится между маркерами  
+  `/*SWAGGER-TO-DART: Codegen start*/` и `/*SWAGGER-TO-DART: Codegen stop*/`.
+
+---
+
+**В: Lint предупреждения слишком строгие / шумные.**  
+О: Все правила настраиваются в `lint.rules` в `dart_swagger_to_models.yaml`. Вы можете:
+
+- перевести часть правил в `warning` или `off`, если они слишком шумные;
+- оставить `missing_type` и `missing_ref_target` как `error` в CI для контроля качества спецификаций.
+
+---
+
+**В: Как в CI перегенерировать только изменившиеся модели?**  
+О: Используйте инкрементальную генерацию:
+
+```bash
+dart run dart_swagger_to_models:dart_swagger_to_models \
+  --input api.yaml \
+  --output-dir lib/models \
+  --changed-only
+```
+
+При желании можно закоммитить `.dart_swagger_to_models.cache` для стабильного поведения между запусками, либо позволить создавать его заново при каждом запуске.
+
+---
+
+**В: build_runner не запускает генератор.**  
+О: Проверьте, что:
+
+- в `build.yaml` настроен `dart_swagger_to_models|swaggerBuilder`;
+- ваши спецификации лежат в `swagger/`, `openapi/` или `api/`;
+- зависимости `dart_swagger_to_models` и `build_runner` добавлены в `pubspec.yaml`;
+- вы запускаете `dart run build_runner build` (или `flutter pub run build_runner build` для Flutter).
 
 Генератор может быть интегрирован с `build_runner` для автоматической генерации моделей как части пайплайна сборки.
 

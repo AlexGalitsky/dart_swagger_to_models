@@ -14,6 +14,12 @@ void main(List<String> arguments) async {
       valueHelp: 'swagger.yaml',
     )
     ..addFlag(
+      'interactive',
+      help:
+          'Interactive mode: show schemas and ask for confirmation before generation.',
+      defaultsTo: false,
+    )
+    ..addFlag(
       'watch',
       help:
           'Watch the input specification file for changes and regenerate models automatically.',
@@ -110,6 +116,7 @@ void main(List<String> arguments) async {
   final isQuiet = argResults['quiet'] as bool;
   final changedOnly = argResults['changed-only'] as bool;
   final watch = argResults['watch'] as bool;
+  final interactive = argResults['interactive'] as bool;
 
   // Set logging level
   if (isQuiet) {
@@ -180,6 +187,67 @@ void main(List<String> arguments) async {
         effectiveConfig = Config(
           customStyleName: customStyleName,
         );
+      }
+    }
+
+    // In interactive mode, show schemas and ask for confirmation.
+    if (interactive) {
+      if (input.startsWith('http://') || input.startsWith('https://')) {
+        Logger.error(
+          '--interactive mode is only supported for local files. The current input is a URL: $input',
+        );
+        exitCode = 64;
+        return;
+      }
+
+      try {
+        final spec = await SwaggerToDartGenerator.loadSpec(input);
+        final version = SwaggerToDartGenerator.detectVersion(spec);
+        Map<String, dynamic> schemas = const <String, dynamic>{};
+
+        switch (version) {
+          case SpecVersion.swagger2:
+            final definitions = spec['definitions'];
+            if (definitions is Map<String, dynamic>) {
+              schemas = definitions;
+            }
+            break;
+          case SpecVersion.openApi3:
+            final components = spec['components'];
+            if (components is Map<String, dynamic>) {
+              final s = components['schemas'];
+              if (s is Map<String, dynamic>) {
+                schemas = s;
+              }
+            }
+            break;
+        }
+
+        if (schemas.isEmpty) {
+          Logger.warning(
+              'Interactive mode: no schemas found in specification.');
+        } else {
+          stdout.writeln();
+          stdout.writeln('Found ${schemas.length} schema(s):');
+          for (final name in schemas.keys) {
+            stdout.writeln('  - $name');
+          }
+          stdout.writeln();
+        }
+
+        stdout.write(
+            'Proceed with generation for all listed schemas? [y/N]: ');
+        final answer = stdin.readLineSync();
+        if (answer == null ||
+            (answer.toLowerCase() != 'y' && answer.toLowerCase() != 'yes')) {
+          stdout.writeln('Generation cancelled by user.');
+          exitCode = 0;
+          return;
+        }
+      } catch (e) {
+        Logger.error('Interactive mode failed to load or inspect spec: $e');
+        exitCode = 1;
+        return;
       }
     }
 

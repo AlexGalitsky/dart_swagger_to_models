@@ -204,6 +204,8 @@ lint:
 | `--style` | `-s` | Generation style: `plain_dart`, `json_serializable`, `freezed`, or custom style name |
 | `--project-dir` | | Project root directory for scanning Dart files (default: `.`) |
 | `--config` | `-c` | Path to configuration file (default: `dart_swagger_to_models.yaml`) |
+| `--watch` | | Watch the input spec file and regenerate models on changes |
+| `--interactive` | | Interactive mode: show schemas and ask for confirmation before generation |
 | `--verbose` | `-v` | Detailed output (includes debug information) |
 | `--quiet` | `-q` | Minimal output (only errors and critical messages) |
 | `--changed-only` | | Incremental generation - regenerate only changed schemas |

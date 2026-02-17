@@ -347,7 +347,34 @@ Behavior:
 
 ---
 
-### 10. OpenAPI composition schemas (allOf, oneOf, anyOf)
+### 10. Interactive mode
+
+Interactive mode allows you to inspect the list of schemas before generation and confirm (or cancel) the run.
+
+> **Note:** Interactive mode works only with local files passed to `--input`. URLs (`http://...` / `https://...`) are not supported.
+
+Example:
+
+```bash
+dart run dart_swagger_to_models:dart_swagger_to_models \
+  --input swagger/api.yaml \
+  --output-dir lib/models \
+  --interactive
+```
+
+Behavior:
+
+- Loads the specification and detects schemas.
+- Prints the list of schema names to the console.
+- Asks: `Proceed with generation for all listed schemas? [y/N]:`
+  - `y` / `yes` (case-insensitive) → generation continues.
+  - Anything else (or empty input) → generation is cancelled without changes.
+
+You can combine `--interactive` with other flags (`--style`, `--project-dir`, `--config`, `--changed-only`, `--format`, `--verbose`, `--quiet`).
+
+---
+
+### 11. OpenAPI composition schemas (allOf, oneOf, anyOf)
 
 The generator supports OpenAPI 3.0 composition schemas:
 
