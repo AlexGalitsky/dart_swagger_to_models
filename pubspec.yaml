@@ -1,6 +1,6 @@
 name: dart_swagger_to_models
-description: Generate null-safe Dart models from Swagger/OpenAPI specs with multiple styles and per-file output.
-version: 0.5.2
+description: Generate null-safe Dart models from Swagger/OpenAPI specs with multiple styles, validation, test data and per-file output.
+version: 0.6.0
 
 homepage: https://github.com/AlexGalitsky/dart_swagger_to_models
 repository: https://github.com/AlexGalitsky/dart_swagger_to_models

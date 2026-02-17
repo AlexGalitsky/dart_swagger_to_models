@@ -1,19 +1,43 @@
+## 0.6.0
+
+### Added
+- Advanced OpenAPI `oneOf`/`anyOf` support:
+  - Dynamic wrappers for `oneOf`/`anyOf` without discriminator.
+  - Discriminator-aware union-style classes (single class with discriminator field, nullable variant fields and `when`/`maybeWhen` helpers) when the `discriminator` + enum pattern is detected.
+  - Detailed design notes in `doc/en/UNION_TYPES_NOTES.md`.
+- Runtime validation helpers:
+  - Optional `generateValidation: true` flag in `dart_swagger_to_models.yaml`.
+  - `validate()` extension methods generated per model, based on schema constraints:
+    - `minimum` / `maximum` (or `min` / `max`) for numeric fields,
+    - `minLength` / `maxLength` for string lengths,
+    - `minItems` / `maxItems` for array lengths.
+- DartDoc generation:
+  - Optional `generateDocs: true` flag in `dart_swagger_to_models.yaml`.
+  - Class-level and field-level DartDoc comments from OpenAPI/Swagger `description` / `example`.
+- Test data helpers:
+  - Optional `generateTestData: true` flag in `dart_swagger_to_models.yaml`.
+  - Simple test data factories per model (e.g. `User createUserTestData(...)`) with sensible defaults for primitive fields.
+- DX improvements:
+  - `--watch` mode for automatic regeneration when the input spec file changes.
+  - `--interactive` mode that shows the list of schemas and asks for confirmation before generation.
+  - New developer guides: `doc/en/DEVELOPERS.md` and `doc/ru/DEVELOPERS.md`.
+
 ## 0.5.2
 
 ### Added
-- Spec linting (подсказки по качеству спецификаций)
-  - Конфигурируемые lint правила в `dart_swagger_to_models.yaml`
-  - Поддержка включения/выключения отдельных правил
-  - Настройка уровня серьёзности (warning vs error) для каждого правила
-  - Доступные правила:
-    - `missing_type` - поле без типа и без $ref
-    - `suspicious_id_field` - подозрительное id поле (без required и без nullable)
-    - `missing_ref_target` - отсутствующая цель для $ref
-    - `type_inconsistency` - несогласованность типов (например, integer с format)
-    - `empty_object` - пустой объект (нет properties и additionalProperties)
-    - `array_without_items` - массив без items
-    - `empty_enum` - enum без значений
-  - Пример конфигурации:
+- Spec linting (spec quality hints)
+  - Configurable lint rules in `dart_swagger_to_models.yaml`
+  - Ability to enable/disable individual rules
+  - Configurable severity level (warning vs error) for each rule
+  - Available rules:
+    - `missing_type` - field without type and without $ref
+    - `suspicious_id_field` - suspicious id field (not required and not nullable)
+    - `missing_ref_target` - missing target for $ref
+    - `type_inconsistency` - type inconsistency (for example, integer with format)
+    - `empty_object` - empty object (no properties and no additionalProperties)
+    - `array_without_items` - array without items
+    - `empty_enum` - enum without values
+  - Example configuration:
     ```yaml
     lint:
       enabled: true
@@ -30,7 +54,7 @@
 ## 0.5.1
 
 ### Added
-- Incremental generation (инкрементальная генерация)
+- Incremental generation
   - Cache system for tracking schema changes:
     - Caches schema hashes in `.dart_swagger_to_models.cache` file
     - Uses SHA-256 hashes to detect schema changes
@@ -86,7 +110,7 @@
     - `example/flutter_example/` - Flutter project with HTTP client integration
   - Documentation:
     - Added section "Integration with build_runner" to `doc/en/USAGE.md`
-    - Added section "Интеграция с build_runner" to `doc/ru/usage.md`
+  - Added section "Integration with build_runner" to `doc/ru/USAGE.md`
   - Usage:
     ```yaml
     # build.yaml
@@ -124,7 +148,7 @@
 ## 0.3.1
 
 ### Added
-- Pluggable styles (подключаемые стили)
+- Pluggable styles
   - Public API for registering custom generation styles:
     - `StyleRegistry` class for registering custom styles
     - `StyleRegistry.register()` method to register a custom style
