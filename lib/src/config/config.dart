@@ -21,6 +21,11 @@ class Config {
   /// Lint rules configuration.
   final LintConfig? lint;
 
+  /// Whether to generate DartDoc comments from Swagger/OpenAPI descriptions.
+  ///
+  /// If null, documentation generation is enabled by default.
+  final bool? generateDocs;
+
   /// Overrides for individual schemas.
   final Map<String, SchemaOverride> schemaOverrides;
 
@@ -31,6 +36,7 @@ class Config {
     this.projectDir,
     this.useJsonKey,
     this.lint,
+    this.generateDocs,
     Map<String, SchemaOverride>? schemaOverrides,
   }) : schemaOverrides = schemaOverrides ?? {};
 
@@ -46,6 +52,7 @@ class Config {
       projectDir: other.projectDir ?? projectDir,
       useJsonKey: other.useJsonKey ?? useJsonKey,
       lint: other.lint ?? lint,
+      generateDocs: other.generateDocs ?? generateDocs,
       schemaOverrides: {
         ...schemaOverrides,
         ...other.schemaOverrides,

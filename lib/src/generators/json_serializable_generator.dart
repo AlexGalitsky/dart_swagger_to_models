@@ -26,8 +26,12 @@ class JsonSerializableGenerator extends ClassGeneratorStrategy {
       ..writeln('@JsonSerializable()')
       ..writeln('class $className {');
 
-    // Fields
+    // Fields with optional DartDoc and @JsonKey
     fields.forEach((propName, field) {
+      final docLines = _buildFieldDocLines(field);
+      for (final line in docLines) {
+        buffer.writeln('  $line');
+      }
       // Generate @JsonKey if needed
       if (useJsonKey && field.needsJsonKey(true)) {
         buffer.writeln('  @JsonKey(name: \'${field.jsonKey}\')');
@@ -56,4 +60,32 @@ class JsonSerializableGenerator extends ClassGeneratorStrategy {
     buffer.writeln('}');
     return buffer.toString();
   }
+}
+
+List<String> _buildFieldDocLines(FieldInfo field) {
+  final schema = field.schema;
+  final description = schema['description'] as String?;
+  final example = schema['example'];
+  final lines = <String>[];
+
+  if (description != null && description.trim().isNotEmpty) {
+    final descLines = description.trim().split('\n');
+    for (final line in descLines) {
+      final trimmed = line.trimRight();
+      if (trimmed.isEmpty) {
+        lines.add('///');
+      } else {
+        lines.add('/// $trimmed');
+      }
+    }
+  }
+
+  if (example != null) {
+    if (lines.isNotEmpty) {
+      lines.add('///');
+    }
+    lines.add('/// Example: $example');
+  }
+
+  return lines;
 }

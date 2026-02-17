@@ -175,13 +175,16 @@ schemas:
     className: CustomUser
 ```
 
-**Example with `useJsonKey`:**
+**Example with `useJsonKey` and documentation generation:**
 
-When `useJsonKey: true` is set, fields with snake_case JSON keys automatically get `@JsonKey` annotations:
+When `useJsonKey: true` is set, fields with snake_case JSON keys automatically get `@JsonKey` annotations.
+When `generateDocs: true` (default), the generator adds DartDoc comments from schema-level `description` / `example`
+and field-level `description` / `example` (where present):
 
 ```yaml
 # dart_swagger_to_models.yaml
 useJsonKey: true
+generateDocs: true
 ```
 
 For a schema with fields `user_id` and `user_name`, the generator will produce:

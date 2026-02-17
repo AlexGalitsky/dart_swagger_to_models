@@ -479,7 +479,7 @@ class SwaggerToDartGenerator {
 
     buffer.writeln('/*SWAGGER-TO-DART: Codegen start*/');
     buffer.writeln();
-    buffer.write(_generateEnum(enumName, schema, context));
+    buffer.write(_generateEnum(enumName, schema, context, config: config));
     buffer.writeln();
     buffer.writeln('/*SWAGGER-TO-DART: Codegen stop*/');
 
@@ -653,7 +653,7 @@ class SwaggerToDartGenerator {
     final before =
         existingContent.substring(0, startIndex + startMarker.length);
     final after = existingContent.substring(stopIndex);
-    final newEnumCode = _generateEnum(enumName, schema, context);
+    final newEnumCode = _generateEnum(enumName, schema, context, config: config);
 
     return '$before\n$newEnumCode\n$after';
   }
@@ -760,8 +760,9 @@ class SwaggerToDartGenerator {
   static String _generateEnum(
     String name,
     Map<String, dynamic> schema,
-    GenerationContext context,
-  ) {
+    GenerationContext context, {
+    Config? config,
+  }) {
     final enumName = _toPascalCase(name);
     final enumValues = schema['enum'] as List?;
     if (enumValues == null || enumValues.isEmpty) {
@@ -774,7 +775,23 @@ class SwaggerToDartGenerator {
     final hasCustomNames =
         enumNames != null && enumNames.length == enumValues.length;
 
-    final buffer = StringBuffer()..writeln('enum $enumName {');
+    final buffer = StringBuffer();
+
+    // Optional DartDoc for enum from schema.description / schema.example
+    final generateDocs = config?.generateDocs ?? true;
+    if (generateDocs) {
+      final description = schema['description'] as String?;
+      final example = schema['example'];
+      final doc = _buildDocComment(
+        description: description,
+        example: example,
+      );
+      if (doc.isNotEmpty) {
+        buffer.writeln(doc);
+      }
+    }
+
+    buffer.writeln('enum $enumName {');
 
     for (var i = 0; i < enumValues.length; i++) {
       final value = enumValues[i];
@@ -862,6 +879,21 @@ class SwaggerToDartGenerator {
     }
 
     final className = override?.className ?? _toPascalCase(name);
+
+    // Optional DartDoc for class from schema.description / schema.example
+    final generateDocs = config?.generateDocs ?? true;
+    String? classDoc;
+    if (generateDocs) {
+      final description = schema['description'] as String?;
+      final example = schema['example'];
+      final doc = _buildDocComment(
+        description: description,
+        example: example,
+      );
+      if (doc.isNotEmpty) {
+        classDoc = doc;
+      }
+    }
     final properties = schema['properties'] as Map<String, dynamic>? ?? {};
     final additionalProps = schema['additionalProperties'];
 
@@ -955,7 +987,7 @@ class SwaggerToDartGenerator {
     // Use strategy for class generation
     final strategy = GeneratorFactory.createStrategy(style,
         customStyleName: config?.customStyleName);
-    return strategy.generateFullClass(
+    final classCode = strategy.generateFullClass(
       className,
       fieldInfos,
       (jsonKey, schema) {
@@ -968,6 +1000,11 @@ class SwaggerToDartGenerator {
       (fieldName, schema) => _toJsonExpression(fieldName, schema, context),
       useJsonKey: useJsonKey,
     );
+
+    if (classDoc != null) {
+      return '$classDoc\n$classCode';
+    }
+    return classCode;
   }
 
   /// Generates class for allOf schema.
@@ -1697,6 +1734,39 @@ class SwaggerToDartGenerator {
       return 'Unknown';
     }
     return parts.map((p) => p[0].toUpperCase() + p.substring(1)).join();
+  }
+
+  /// Builds a DartDoc comment block from description and example.
+  ///
+  /// Returns a string with lines starting with `///`, or an empty string
+  /// if there is nothing to document.
+  static String _buildDocComment({
+    String? description,
+    dynamic example,
+  }) {
+    final lines = <String>[];
+
+    if (description != null && description.trim().isNotEmpty) {
+      final descLines = description.trim().split('\n');
+      for (final line in descLines) {
+        final trimmed = line.trimRight();
+        if (trimmed.isEmpty) {
+          lines.add('///');
+        } else {
+          lines.add('/// $trimmed');
+        }
+      }
+    }
+
+    if (example != null) {
+      if (lines.isNotEmpty) {
+        lines.add('///');
+      }
+      final exampleString = example is String ? example : jsonEncode(example);
+      lines.add('/// Example: $exampleString');
+    }
+
+    return lines.isEmpty ? '' : lines.join('\n');
   }
 
   /// Converts type name to lowerCamelCase for field/parameter names.

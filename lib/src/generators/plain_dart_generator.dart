@@ -20,8 +20,12 @@ class PlainDartGenerator extends ClassGeneratorStrategy {
   }) {
     final buffer = StringBuffer()..writeln('class $className {');
 
-    // Fields
+    // Fields with optional DartDoc from field.schema.description/example
     fields.forEach((propName, field) {
+      final docLines = _buildFieldDocLines(field);
+      for (final line in docLines) {
+        buffer.writeln('  $line');
+      }
       buffer.writeln('  final ${field.dartType} ${field.camelCaseName};');
     });
 
@@ -63,4 +67,32 @@ class PlainDartGenerator extends ClassGeneratorStrategy {
     buffer.writeln('}');
     return buffer.toString();
   }
+}
+
+List<String> _buildFieldDocLines(FieldInfo field) {
+  final schema = field.schema;
+  final description = schema['description'] as String?;
+  final example = schema['example'];
+  final lines = <String>[];
+
+  if (description != null && description.trim().isNotEmpty) {
+    final descLines = description.trim().split('\n');
+    for (final line in descLines) {
+      final trimmed = line.trimRight();
+      if (trimmed.isEmpty) {
+        lines.add('///');
+      } else {
+        lines.add('/// $trimmed');
+      }
+    }
+  }
+
+  if (example != null) {
+    if (lines.isNotEmpty) {
+      lines.add('///');
+    }
+    lines.add('/// Example: $example');
+  }
+
+  return lines;
 }

@@ -293,6 +293,75 @@ void main() {
       expect(content, contains('Map<String, String>'));
     });
 
+    test('generates DartDoc from schema descriptions', () async {
+      final tempDir =
+          await Directory.systemTemp.createTemp('dart_swagger_to_models_docs_');
+      final specFile = File('${tempDir.path}/openapi.json');
+
+      final spec = <String, dynamic>{
+        'openapi': '3.0.0',
+        'info': {
+          'title': 'Test API',
+          'version': '1.0.0',
+        },
+        'paths': <String, dynamic>{},
+        'components': {
+          'schemas': {
+            'UserStatus': {
+              'type': 'string',
+              'description': 'Status of the user.',
+              'enum': ['active', 'inactive'],
+            },
+            'User': {
+              'type': 'object',
+              'description': 'User model used in tests.',
+              'properties': {
+                'id': {
+                  'type': 'integer',
+                  'description': 'Unique identifier of the user.',
+                },
+                'name': {
+                  'type': 'string',
+                  'description': 'Display name of the user.',
+                },
+              },
+            },
+          },
+        },
+      };
+
+      await specFile.writeAsString(jsonEncode(spec));
+
+      final result = await SwaggerToDartGenerator.generateModels(
+        input: specFile.path,
+        outputDir: '${tempDir.path}/models',
+        libraryName: 'api_models',
+        projectDir: tempDir.path,
+      );
+
+      final userStatusFile =
+          result.generatedFiles.firstWhere((f) => f.contains('user_status.dart'));
+      final userFile =
+          result.generatedFiles.firstWhere((f) => f.contains('user.dart'));
+
+      final enumContent = await File(userStatusFile).readAsString();
+      final userContent = await File(userFile).readAsString();
+
+      // Enum-level docs
+      expect(enumContent, contains('/// Status of the user.'));
+      expect(enumContent, contains('enum UserStatus'));
+
+      // Class-level docs
+      expect(userContent, contains('/// User model used in tests.'));
+      expect(userContent, contains('class User'));
+
+      // Field-level docs (id and name)
+      expect(userContent,
+          contains('/// Unique identifier of the user.\n  final int id;'));
+      expect(userContent,
+          contains('/// Display name of the user.\n  final String name;'));
+    });
+
     test('distinguishes int and num', () async {
       final tempDir =
           await Directory.systemTemp.createTemp('dart_swagger_to_models_test_');
