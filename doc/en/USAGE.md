@@ -280,7 +280,32 @@ The generator provides clear error messages for:
 
 ---
 
-### 9. OpenAPI composition schemas (allOf, oneOf, anyOf)
+### 9. Watch mode
+
+You can automatically regenerate models when your specification file changes using the `--watch` flag.
+
+> **Note:** Watch mode works only with local files passed to `--input`. URLs (`http://...` / `https://...`) are not supported in watch mode.
+
+Example:
+
+```bash
+dart run dart_swagger_to_models:dart_swagger_to_models \
+  --input swagger/api.yaml \
+  --output-dir lib/models \
+  --watch
+```
+
+Behavior:
+
+- Runs generation once at startup.
+- Watches the input file for changes and regenerates models on each save (with a small debounce).
+- Respects other flags:
+  - `--style`, `--project-dir`, `--config`, `--changed-only`, `--format`,
+  - logging flags `--verbose` / `--quiet`.
+
+---
+
+### 10. OpenAPI composition schemas (allOf, oneOf, anyOf)
 
 The generator supports OpenAPI 3.0 composition schemas:
 

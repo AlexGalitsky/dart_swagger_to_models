@@ -13,6 +13,12 @@ void main(List<String> arguments) async {
       help: 'Path to Swagger/OpenAPI specification (file or URL).',
       valueHelp: 'swagger.yaml',
     )
+    ..addFlag(
+      'watch',
+      help:
+          'Watch the input specification file for changes and regenerate models automatically.',
+      defaultsTo: false,
+    )
     ..addOption(
       'output-dir',
       abbr: 'o',
@@ -103,6 +109,7 @@ void main(List<String> arguments) async {
   final isVerbose = argResults['verbose'] as bool;
   final isQuiet = argResults['quiet'] as bool;
   final changedOnly = argResults['changed-only'] as bool;
+  final watch = argResults['watch'] as bool;
 
   // Set logging level
   if (isQuiet) {
@@ -144,9 +151,9 @@ void main(List<String> arguments) async {
 
   try {
     // Load configuration if present
-    Config? config;
+    Config? baseConfig;
     try {
-      config = await ConfigLoader.loadConfig(configPath, projectDir);
+      baseConfig = await ConfigLoader.loadConfig(configPath, projectDir);
       Logger.verbose(
           'Configuration loaded from ${configPath ?? 'dart_swagger_to_models.yaml'}');
     } catch (e) {
@@ -155,79 +162,123 @@ void main(List<String> arguments) async {
     }
 
     // If custom style is specified via CLI, add it to config
+    Config? effectiveConfig = baseConfig;
     if (customStyleName != null) {
-      if (config != null) {
-        config = Config(
-          defaultStyle: config.defaultStyle,
+      if (effectiveConfig != null) {
+        effectiveConfig = Config(
+          defaultStyle: effectiveConfig.defaultStyle,
           customStyleName: customStyleName, // CLI has priority
-          outputDir: config.outputDir,
-          projectDir: config.projectDir,
-          useJsonKey: config.useJsonKey,
-          lint: config.lint,
-          schemaOverrides: config.schemaOverrides,
+          outputDir: effectiveConfig.outputDir,
+          projectDir: effectiveConfig.projectDir,
+          useJsonKey: effectiveConfig.useJsonKey,
+          lint: effectiveConfig.lint,
+          generateDocs: effectiveConfig.generateDocs,
+          schemaOverrides: effectiveConfig.schemaOverrides,
         );
       } else {
         // If no config, create new one with custom style
-        config = Config(
+        effectiveConfig = Config(
           customStyleName: customStyleName,
         );
       }
     }
 
-    Logger.info('Loading specification from: $input');
-    final result = await SwaggerToDartGenerator.generateModels(
-      input: input,
-      outputDir: outputDir,
-      libraryName: libraryName,
-      style: style,
-      projectDir: projectDir,
-      config: config,
-      changedOnly: changedOnly,
-    );
+    Future<void> runOnce() async {
+      Logger.info('Loading specification from: $input');
+      final result = await SwaggerToDartGenerator.generateModels(
+        input: input,
+        outputDir: outputDir,
+        libraryName: libraryName,
+        style: style,
+        projectDir: projectDir,
+        config: effectiveConfig,
+        changedOnly: changedOnly,
+      );
 
-    // Format files if --format flag is specified
-    if (shouldFormat) {
-      Logger.info('Formatting generated files...');
-      for (final file in result.generatedFiles) {
-        try {
-          final process = await Process.run(
-            'dart',
-            ['format', file],
-            runInShell: true,
-          );
-          if (process.exitCode != 0) {
-            Logger.warning('Failed to format $file');
-          } else {
-            Logger.verbose('Formatted: $file');
+      // Format files if --format flag is specified
+      if (shouldFormat) {
+        Logger.info('Formatting generated files...');
+        for (final file in result.generatedFiles) {
+          try {
+            final process = await Process.run(
+              'dart',
+              ['format', file],
+              runInShell: true,
+            );
+            if (process.exitCode != 0) {
+              Logger.warning('Failed to format $file');
+            } else {
+              Logger.verbose('Formatted: $file');
+            }
+          } catch (e) {
+            Logger.warning('Failed to run dart format for $file: $e');
           }
-        } catch (e) {
-          Logger.warning('Failed to run dart format for $file: $e');
         }
       }
-    }
 
-    // Print summary
-    _printSummary(result);
+      // Print summary
+      _printSummary(result);
 
-    // Print warnings if any
-    if (Logger.warnings.isNotEmpty && !isQuiet) {
-      stdout.writeln();
-      stdout.writeln('Warnings:');
-      for (final warning in Logger.warnings) {
-        stdout.writeln('  ⚠️  $warning');
+      // Print warnings if any
+      if (Logger.warnings.isNotEmpty && !isQuiet) {
+        stdout.writeln();
+        stdout.writeln('Warnings:');
+        for (final warning in Logger.warnings) {
+          stdout.writeln('  ⚠️  $warning');
+        }
+      }
+
+      // Print errors if any
+      if (Logger.errors.isNotEmpty) {
+        stderr.writeln();
+        stderr.writeln('Errors:');
+        for (final error in Logger.errors) {
+          stderr.writeln('  ❌ $error');
+        }
+        exitCode = 1;
+      } else {
+        Logger.success('Generation completed successfully!');
+        exitCode = 0;
       }
     }
 
-    // Print errors if any
-    if (Logger.errors.isNotEmpty) {
-      stderr.writeln();
-      stderr.writeln('Errors:');
-      for (final error in Logger.errors) {
-        stderr.writeln('  ❌ $error');
+    if (!watch) {
+      await runOnce();
+      return;
+    }
+
+    // Watch mode: re-run generation when the input file changes.
+    if (input.startsWith('http://') || input.startsWith('https://')) {
+      Logger.error(
+        '--watch mode is only supported for local files. The current input is a URL: $input',
+      );
+      exitCode = 64;
+      return;
+    }
+
+    final specFile = File(input);
+    if (!await specFile.exists()) {
+      Logger.error('Specification file not found for watch mode: $input');
+      exitCode = 66; // EX_NOINPUT
+      return;
+    }
+
+    Logger.info('Watch mode is enabled. Press Ctrl+C to stop.');
+    await runOnce();
+
+    DateTime? lastRun = DateTime.now();
+    const debounceDuration = Duration(milliseconds: 500);
+
+    await for (final _
+        in specFile.watch(events: FileSystemEvent.modify)) {
+      final now = DateTime.now();
+      if (lastRun != null &&
+          now.difference(lastRun) < debounceDuration) {
+        continue;
       }
-      exitCode = 1;
-    } else {
-      Logger.success('Generation completed successfully!');
+      lastRun = now;
+      Logger.info('Change detected in $input, regenerating...');
+      await runOnce();
     }
   } catch (e, st) {
     Logger.error('Error generating models: $e');
