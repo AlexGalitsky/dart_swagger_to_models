@@ -1,6 +1,6 @@
 import 'class_generator_strategy.dart';
 
-/// Стратегия генерации для freezed стиля.
+/// Generation strategy for the `freezed` style.
 class FreezedGenerator extends ClassGeneratorStrategy {
   @override
   List<String> generateImportsAndParts(String fileName) => [
@@ -29,7 +29,7 @@ class FreezedGenerator extends ClassGeneratorStrategy {
     // const factory
     buffer.writeln('  const factory $className({');
     fields.forEach((propName, field) {
-      // Генерируем @JsonKey, если нужно
+      // Generate @JsonKey if needed
       if (useJsonKey && field.needsJsonKey(true)) {
         buffer.writeln('    @JsonKey(name: \'${field.jsonKey}\')');
       }
@@ -39,7 +39,7 @@ class FreezedGenerator extends ClassGeneratorStrategy {
     buffer.writeln('  }) = _$className;');
     buffer.writeln();
 
-    // fromJson делегируем freezed/json_serializable
+    // fromJson is delegated to freezed/json_serializable
     buffer.writeln(
         '  factory $className.fromJson(Map<String, dynamic> json) => _\$${className}FromJson(json);');
 

@@ -1,18 +1,18 @@
-/// Абстрактная стратегия генерации Dart-классов из Swagger/OpenAPI схем.
+/// Abstract strategy for generating Dart classes from Swagger/OpenAPI schemas.
 abstract class ClassGeneratorStrategy {
-  /// Генерирует импорты и part'ы для файла.
+  /// Generates imports and part directives for a file.
   List<String> generateImportsAndParts(String fileName);
 
-  /// Генерирует аннотации класса (например, @JsonSerializable(), @freezed).
+  /// Generates class-level annotations (e.g., @JsonSerializable(), @freezed).
   List<String> generateClassAnnotations(String className);
 
-  /// Генерирует полный класс.
+  /// Generates the full class code.
   ///
-  /// [className] - имя класса в PascalCase.
-  /// [fields] - информация о полях класса.
-  /// [fromJsonExpression] - функция для генерации выражения fromJson для поля.
-  /// [toJsonExpression] - функция для генерации выражения toJson для поля.
-  /// [useJsonKey] - использовать @JsonKey для полей с snake_case JSON-ключами.
+  /// [className] - class name in PascalCase.
+  /// [fields] - information about class fields.
+  /// [fromJsonExpression] - function that generates a fromJson expression for a field.
+  /// [toJsonExpression] - function that generates a toJson expression for a field.
+  /// [useJsonKey] - whether to use @JsonKey for fields with snake_case JSON keys.
   String generateFullClass(
     String className,
     Map<String, FieldInfo> fields,
@@ -24,12 +24,12 @@ abstract class ClassGeneratorStrategy {
   });
 }
 
-/// Информация о поле класса.
+/// Information about a class field.
 class FieldInfo {
-  /// Имя поля в Dart (может быть переименовано через конфиг).
+  /// Field name in Dart (can be renamed via config).
   final String name;
 
-  /// Оригинальный JSON ключ из схемы.
+  /// Original JSON key from the schema.
   final String jsonKey;
 
   final String dartType;
@@ -54,10 +54,10 @@ class FieldInfo {
     return pascal.isEmpty ? '' : pascal[0].toLowerCase() + pascal.substring(1);
   }
 
-  /// Проверяет, нужно ли генерировать @JsonKey (когда JSON ключ отличается от Dart имени).
+  /// Checks whether @JsonKey should be generated (when JSON key differs from Dart field name).
   bool needsJsonKey(bool useJsonKeyEnabled) {
     if (!useJsonKeyEnabled) return false;
-    // Генерируем @JsonKey, если JSON ключ отличается от Dart имени поля
+    // Generate @JsonKey when JSON key is different from Dart field name
     return jsonKey != camelCaseName;
   }
 }

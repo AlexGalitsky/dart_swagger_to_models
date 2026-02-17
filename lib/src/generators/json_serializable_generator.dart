@@ -1,6 +1,6 @@
 import 'class_generator_strategy.dart';
 
-/// Стратегия генерации для json_serializable стиля.
+/// Generation strategy for the `json_serializable` style.
 class JsonSerializableGenerator extends ClassGeneratorStrategy {
   @override
   List<String> generateImportsAndParts(String fileName) => [
@@ -26,9 +26,9 @@ class JsonSerializableGenerator extends ClassGeneratorStrategy {
       ..writeln('@JsonSerializable()')
       ..writeln('class $className {');
 
-    // Поля
+    // Fields
     fields.forEach((propName, field) {
-      // Генерируем @JsonKey, если нужно
+      // Generate @JsonKey if needed
       if (useJsonKey && field.needsJsonKey(true)) {
         buffer.writeln('  @JsonKey(name: \'${field.jsonKey}\')');
       }
@@ -37,7 +37,7 @@ class JsonSerializableGenerator extends ClassGeneratorStrategy {
 
     buffer.writeln();
 
-    // Конструктор
+    // Constructor
     buffer.writeln('  const $className({');
     fields.forEach((propName, field) {
       final prefix = field.isRequired ? 'required ' : '';
@@ -46,7 +46,7 @@ class JsonSerializableGenerator extends ClassGeneratorStrategy {
     buffer.writeln('  });');
     buffer.writeln();
 
-    // fromJson/toJson делегируем json_serializable
+    // fromJson/toJson are delegated to json_serializable
     buffer.writeln(
         '  factory $className.fromJson(Map<String, dynamic> json) => _\$${className}FromJson(json);');
     buffer.writeln();

@@ -1,6 +1,6 @@
 import 'class_generator_strategy.dart';
 
-/// Стратегия генерации для plain_dart стиля.
+/// Generation strategy for plain_dart style.
 class PlainDartGenerator extends ClassGeneratorStrategy {
   @override
   List<String> generateImportsAndParts(String fileName) => [];
@@ -20,14 +20,14 @@ class PlainDartGenerator extends ClassGeneratorStrategy {
   }) {
     final buffer = StringBuffer()..writeln('class $className {');
 
-    // Поля
+    // Fields
     fields.forEach((propName, field) {
       buffer.writeln('  final ${field.dartType} ${field.camelCaseName};');
     });
 
     buffer.writeln();
 
-    // Конструктор
+    // Constructor
     buffer.writeln('  const $className({');
     fields.forEach((propName, field) {
       final prefix = field.isRequired ? 'required ' : '';

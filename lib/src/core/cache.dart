@@ -3,16 +3,16 @@ import 'dart:io';
 import 'package:crypto/crypto.dart';
 import 'package:path/path.dart' as p;
 
-/// Кэш для инкрементальной генерации.
+/// Cache for incremental generation.
 ///
-/// Хранит хеши схем для определения изменений между запусками генератора.
+/// Stores schema hashes to detect changes between generator runs.
 class GenerationCache {
   final String cacheFilePath;
   Map<String, String> _schemaHashes = {};
 
   GenerationCache(this.cacheFilePath);
 
-  /// Загружает кэш из файла.
+  /// Loads cache from a file.
   static Future<GenerationCache?> load(String projectDir) async {
     final cacheFile = File(p.join(projectDir, '.dart_swagger_to_models.cache'));
 
@@ -31,12 +31,12 @@ class GenerationCache {
       );
       return cache;
     } catch (e) {
-      // Если не удалось загрузить кэш, возвращаем пустой
+      // If cache cannot be loaded, return an empty one
       return GenerationCache(cacheFile.path);
     }
   }
 
-  /// Сохраняет кэш в файл.
+  /// Saves cache to a file.
   Future<void> save() async {
     final cacheFile = File(cacheFilePath);
     final data = {
@@ -45,9 +45,9 @@ class GenerationCache {
     await cacheFile.writeAsString(jsonEncode(data));
   }
 
-  /// Вычисляет хеш схемы.
+  /// Computes a hash for a schema.
   static String computeSchemaHash(Map<String, dynamic> schema) {
-    // Нормализуем схему: сортируем ключи для стабильности хеша
+    // Normalize schema: sort keys for stable hash
     final normalized = _normalizeSchema(schema);
     final jsonString = jsonEncode(normalized);
     final bytes = utf8.encode(jsonString);
@@ -55,11 +55,11 @@ class GenerationCache {
     return hash.toString();
   }
 
-  /// Нормализует схему для стабильного хеширования.
+  /// Normalizes schema for stable hashing.
   static Map<String, dynamic> _normalizeSchema(Map<String, dynamic> schema) {
     final result = <String, dynamic>{};
 
-    // Сортируем ключи для стабильности
+    // Sort keys for stability
     final sortedKeys = schema.keys.toList()..sort();
 
     for (final key in sortedKeys) {
@@ -82,32 +82,32 @@ class GenerationCache {
     return result;
   }
 
-  /// Получает хеш схемы из кэша.
+  /// Gets schema hash from the cache.
   String? getHash(String schemaName) {
     return _schemaHashes[schemaName];
   }
 
-  /// Устанавливает хеш схемы.
+  /// Sets schema hash in the cache.
   void setHash(String schemaName, String hash) {
     _schemaHashes[schemaName] = hash;
   }
 
-  /// Удаляет хеш схемы (для удалённых схем).
+  /// Removes schema hash (for deleted schemas).
   void removeHash(String schemaName) {
     _schemaHashes.remove(schemaName);
   }
 
-  /// Проверяет, изменилась ли схема.
+  /// Checks whether a schema has changed.
   bool hasChanged(String schemaName, Map<String, dynamic> schema) {
     final currentHash = computeSchemaHash(schema);
     final cachedHash = getHash(schemaName);
     return cachedHash == null || cachedHash != currentHash;
   }
 
-  /// Получает список всех закэшированных схем.
+  /// Returns a set of all cached schemas.
   Set<String> get cachedSchemas => _schemaHashes.keys.toSet();
 
-  /// Очищает кэш.
+  /// Clears the cache.
   void clear() {
     _schemaHashes.clear();
   }

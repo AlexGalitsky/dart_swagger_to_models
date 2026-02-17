@@ -1,48 +1,48 @@
-/// Уровень серьёзности lint правила.
+/// Severity level of a lint rule.
 enum LintSeverity {
-  /// Отключено (не проверяется).
+  /// Rule is disabled (not checked).
   off,
 
-  /// Предупреждение (warning).
+  /// Warning.
   warning,
 
-  /// Ошибка (error).
+  /// Error.
   error,
 }
 
-/// Идентификаторы lint правил.
+/// Identifiers of lint rules.
 enum LintRuleId {
-  /// Поле без типа и без $ref.
+  /// Field without type and without $ref.
   missingType,
 
-  /// Подозрительное id поле (без required и без nullable).
+  /// Suspicious id field (without required and without nullable).
   suspiciousIdField,
 
-  /// Отсутствующая цель для $ref.
+  /// Missing target for $ref.
   missingRefTarget,
 
-  /// Несогласованность типов (например, type: string, но format: date-time без nullable).
+  /// Type inconsistency (for example, type: string but format: date-time without nullable).
   typeInconsistency,
 
-  /// Пустой объект (properties пустой и нет additionalProperties).
+  /// Empty object (no properties and no additionalProperties).
   emptyObject,
 
-  /// Массив без items.
+  /// Array without items.
   arrayWithoutItems,
 
-  /// Enum без значений.
+  /// Enum without values.
   emptyEnum,
 }
 
-/// Конфигурация lint правила.
+/// Configuration for a single lint rule.
 class LintRuleConfig {
-  /// Идентификатор правила.
+  /// Rule identifier.
   final LintRuleId id;
 
-  /// Уровень серьёзности.
+  /// Severity level.
   final LintSeverity severity;
 
-  /// Включено ли правило.
+  /// Whether the rule is enabled.
   bool get enabled => severity != LintSeverity.off;
 
   LintRuleConfig({
@@ -50,11 +50,11 @@ class LintRuleConfig {
     required this.severity,
   });
 
-  /// Создаёт правило с уровнем по умолчанию.
+  /// Creates a rule with a default severity.
   factory LintRuleConfig.defaultFor(LintRuleId id) {
-    // По умолчанию все правила включены как warning, кроме критичных
+    // By default all rules are enabled as warning, except critical ones
     final defaultSeverity = switch (id) {
-      LintRuleId.missingRefTarget => LintSeverity.error, // Критичная ошибка
+      LintRuleId.missingRefTarget => LintSeverity.error, // Critical error
       LintRuleId.missingType => LintSeverity.warning,
       LintRuleId.suspiciousIdField => LintSeverity.warning,
       LintRuleId.typeInconsistency => LintSeverity.warning,
@@ -65,7 +65,7 @@ class LintRuleConfig {
     return LintRuleConfig(id: id, severity: defaultSeverity);
   }
 
-  /// Создаёт правило из строки (для парсинга конфига).
+  /// Creates a rule from strings (for config parsing).
   factory LintRuleConfig.fromString(String idStr, String severityStr) {
     final id = _parseRuleId(idStr);
     final severity = parseSeverity(severityStr);
@@ -100,7 +100,7 @@ class LintRuleConfig {
     }
   }
 
-  /// Парсит уровень серьёзности из строки (публичный метод для использования в ConfigLoader).
+  /// Parses severity level from string (public method used by ConfigLoader).
   static LintSeverity parseSeverity(String str) {
     switch (str.toLowerCase()) {
       case 'off':
@@ -117,23 +117,23 @@ class LintRuleConfig {
   }
 }
 
-/// Конфигурация всех lint правил.
+/// Configuration for all lint rules.
 class LintConfig {
-  /// Правила с их конфигурацией.
+  /// Rules with their configurations.
   final Map<LintRuleId, LintRuleConfig> rules;
 
   LintConfig({Map<LintRuleId, LintRuleConfig>? rules})
       : rules = rules ??
             {
-              // По умолчанию все правила включены
+              // By default all rules are enabled
               for (final id in LintRuleId.values)
                 id: LintRuleConfig.defaultFor(id),
             };
 
-  /// Создаёт конфигурацию по умолчанию (все правила включены).
+  /// Creates default configuration (all rules are enabled).
   factory LintConfig.defaultConfig() => LintConfig();
 
-  /// Создаёт конфигурацию с отключёнными правилами.
+  /// Creates configuration with all rules disabled.
   factory LintConfig.disabled() => LintConfig(
         rules: {
           for (final id in LintRuleId.values)
@@ -141,22 +141,22 @@ class LintConfig {
         },
       );
 
-  /// Получить конфигурацию правила.
+  /// Get configuration for a rule.
   LintRuleConfig getRule(LintRuleId id) {
     return rules[id] ?? LintRuleConfig.defaultFor(id);
   }
 
-  /// Проверить, включено ли правило.
+  /// Check if a rule is enabled.
   bool isEnabled(LintRuleId id) {
     return getRule(id).enabled;
   }
 
-  /// Получить уровень серьёзности правила.
+  /// Get severity level for a rule.
   LintSeverity getSeverity(LintRuleId id) {
     return getRule(id).severity;
   }
 
-  /// Объединить с другой конфигурацией (other имеет приоритет).
+  /// Merge with another configuration (other has priority).
   LintConfig merge(LintConfig other) {
     return LintConfig(
       rules: {

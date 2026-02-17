@@ -8,15 +8,15 @@ import 'package:dart_swagger_to_models/src/config/config_loader.dart';
 import 'package:path/path.dart' as p;
 import 'package:yaml/yaml.dart';
 
-/// Builder для генерации Dart-моделей из Swagger/OpenAPI спецификаций.
+/// Builder for generating Dart models from Swagger/OpenAPI specifications.
 ///
-/// Этот Builder обрабатывает файлы спецификаций (`.yaml`, `.yml`, `.json`)
-/// и генерирует Dart-модели в указанной выходной директории.
+/// This Builder processes spec files (`.yaml`, `.yml`, `.json`)
+/// and generates Dart models in the configured output directory.
 ///
-/// Конфигурация читается из `dart_swagger_to_models.yaml` в корне проекта.
+/// Configuration is read from `dart_swagger_to_models.yaml` in the project root.
 ///
-/// Использование:
-/// 1. Создайте файл `build.yaml` в корне проекта:
+/// Usage:
+/// 1. Create a `build.yaml` file in the project root:
 /// ```yaml
 /// targets:
 ///   $default:
@@ -24,15 +24,15 @@ import 'package:yaml/yaml.dart';
 ///       dart_swagger_to_models|swaggerBuilder:
 ///         enabled: true
 /// ```
-/// 2. Поместите файлы спецификаций в `swagger/` или `openapi/` директорию
-/// 3. Запустите `dart run build_runner build`
+/// 2. Put your spec files into `swagger/` or `openapi/` directories
+/// 3. Run `dart run build_runner build`
 class SwaggerBuilder implements Builder {
-  /// Имя конфигурационного файла.
+  /// Configuration file name.
   static const String configFileName = 'dart_swagger_to_models.yaml';
 
   @override
   Map<String, List<String>> get buildExtensions => {
-        // Обрабатываем файлы спецификаций и генерируем Dart-файлы
+        // Process spec files and generate Dart files
         '.yaml': ['.dart'],
         '.yml': ['.dart'],
         '.json': ['.dart'],
@@ -42,19 +42,19 @@ class SwaggerBuilder implements Builder {
   FutureOr<void> build(BuildStep buildStep) async {
     final inputId = buildStep.inputId;
 
-    // Пропускаем файлы, которые не являются спецификациями OpenAPI/Swagger
+    // Skip files that are not OpenAPI/Swagger specs
     if (!_isSpecFile(inputId.path)) {
       return;
     }
 
-    // Читаем спецификацию
+    // Read specification
     final specContent = await buildStep.readAsString(inputId);
     Map<String, dynamic> spec;
     try {
       if (inputId.path.endsWith('.json')) {
         spec = jsonDecode(specContent) as Map<String, dynamic>;
       } else {
-        // Для YAML используем yaml пакет
+        // For YAML use yaml package
         final yaml = loadYaml(specContent) as Map;
         spec = Map<String, dynamic>.from(
             yaml.map((k, v) => MapEntry(k.toString(), v)));
@@ -64,36 +64,36 @@ class SwaggerBuilder implements Builder {
       return;
     }
 
-    // Проверяем, что это действительно Swagger/OpenAPI спецификация
+    // Ensure this is really a Swagger/OpenAPI specification
     if (!_isSwaggerOrOpenApiSpec(spec)) {
-      return; // Пропускаем файлы, которые не являются спецификациями
+      return; // Skip files that are not specs
     }
 
-    // Находим корень проекта
+    // Find project root
     final projectRoot = await _findProjectRoot(buildStep);
 
-    // Читаем конфигурацию
+    // Read configuration
     final configPath = p.join(projectRoot, configFileName);
     Config? config;
     try {
       config = await ConfigLoader.loadConfig(configPath, projectRoot);
     } catch (e) {
-      // Конфигурация не обязательна
+      // Configuration is optional
       log.fine('Configuration not found: $e');
     }
 
-    // Определяем выходную директорию
+    // Determine output directory
     final outputDir = config?.outputDir ?? 'lib/generated/models';
     final effectiveOutputDir =
         p.isAbsolute(outputDir) ? outputDir : p.join(projectRoot, outputDir);
 
-    // Создаём временный файл для спецификации (build_runner работает с AssetId)
+    // Create temporary file for the spec (build_runner works with AssetId)
     final tempSpecFile = File(p.join(
         Directory.systemTemp.path, '${inputId.path.replaceAll('/', '_')}'));
     try {
       await tempSpecFile.writeAsString(specContent);
 
-      // Генерируем модели
+      // Generate models
       final result = await SwaggerToDartGenerator.generateModels(
         input: tempSpecFile.path,
         outputDir: effectiveOutputDir,
@@ -101,12 +101,12 @@ class SwaggerBuilder implements Builder {
         config: config,
       );
 
-      // Записываем сгенерированные файлы как выходные assets
+      // Write generated files as output assets
       for (final generatedFile in result.generatedFiles) {
         final file = File(generatedFile);
         if (await file.exists()) {
           final content = await file.readAsString();
-          // Определяем AssetId для выходного файла
+          // Determine AssetId for the output file
           final relativePath = p.relative(generatedFile, from: projectRoot);
           final outputAssetId = AssetId(
             inputId.package,
@@ -123,14 +123,14 @@ class SwaggerBuilder implements Builder {
       log.severe('Error generating models from ${inputId.path}: $e');
       log.fine(st.toString());
     } finally {
-      // Удаляем временный файл
+      // Delete temporary file
       if (await tempSpecFile.exists()) {
         await tempSpecFile.delete();
       }
     }
   }
 
-  /// Проверяет, является ли файл спецификацией OpenAPI/Swagger.
+  /// Checks whether a file is an OpenAPI/Swagger spec.
   bool _isSpecFile(String path) {
     final lowerPath = path.toLowerCase();
     return (lowerPath.contains('swagger') ||
@@ -141,7 +141,7 @@ class SwaggerBuilder implements Builder {
             path.endsWith('.json'));
   }
 
-  /// Проверяет, является ли содержимое спецификацией Swagger/OpenAPI.
+  /// Checks whether the content is a Swagger/OpenAPI spec.
   bool _isSwaggerOrOpenApiSpec(Map<String, dynamic> spec) {
     return spec.containsKey('swagger') ||
         spec.containsKey('openapi') ||
@@ -151,9 +151,9 @@ class SwaggerBuilder implements Builder {
                 spec.containsKey('components')));
   }
 
-  /// Находит корневую директорию проекта.
+  /// Finds the project root directory.
   Future<String> _findProjectRoot(BuildStep buildStep) async {
-    // Ищем pubspec.yaml вверх по дереву директорий
+    // Look for pubspec.yaml up the directory tree
     var current = p.dirname(buildStep.inputId.path);
     var package = buildStep.inputId.package;
 
@@ -162,7 +162,7 @@ class SwaggerBuilder implements Builder {
         current != p.rootPrefix(current)) {
       final pubspecId = AssetId(package, p.join(current, 'pubspec.yaml'));
       if (await buildStep.canRead(pubspecId)) {
-        // Для build_runner нужно вернуть путь относительно package
+        // For build_runner we need to return a path relative to the package
         return current.isEmpty ? '.' : current;
       }
       final parent = p.dirname(current);
@@ -173,5 +173,5 @@ class SwaggerBuilder implements Builder {
   }
 }
 
-/// Builder factory для регистрации в build.yaml.
+/// Builder factory for registration in build.yaml.
 Builder swaggerBuilder(BuilderOptions options) => SwaggerBuilder();

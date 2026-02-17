@@ -1228,7 +1228,7 @@ class SwaggerToDartGenerator {
       return required ? baseType : '$baseType?';
     }
 
-    // Проверка на enum
+    // Check for enum
     if (context.isEnum(schema)) {
       final enumName = context.getEnumTypeName(schema, null);
       if (enumName != null) {
@@ -1305,7 +1305,7 @@ class SwaggerToDartGenerator {
     final nullable = schema['nullable'] as bool? ?? false;
     final isNonNullable = isRequired && !nullable;
 
-    // Обработка $ref
+    // Handle $ref
     final ref = schema[r'$ref'] as String?;
     if (ref != null) {
       final refSchema = context.resolveRef(ref, context: null);
@@ -1335,7 +1335,7 @@ class SwaggerToDartGenerator {
       return '$source == null ? null : $type.fromJson($source as Map<String, dynamic>)';
     }
 
-    // Проверка на enum
+    // Check for enum
     if (context.isEnum(schema)) {
       final enumName = context.getEnumTypeName(schema, null);
       if (enumName != null) {
@@ -1417,7 +1417,7 @@ class SwaggerToDartGenerator {
     Map<String, dynamic> schema,
     GenerationContext context,
   ) {
-    // Обработка $ref
+    // Handle $ref
     final ref = schema[r'$ref'] as String?;
     if (ref != null) {
       final refSchema = context.resolveRef(ref, context: null);
@@ -1427,7 +1427,7 @@ class SwaggerToDartGenerator {
       return '$fieldName?.toJson()';
     }
 
-    // Проверка на enum
+    // Check for enum
     if (context.isEnum(schema)) {
       return '$fieldName?.toJson()';
     }
@@ -1554,7 +1554,7 @@ class SwaggerToDartGenerator {
           }
         }
 
-        // Проверка на $ref
+        // Check for $ref
         final propRef = propSchema[r'$ref'] as String?;
         if (propRef != null) {
           if (lintConfig.isEnabled(LintRuleId.missingRefTarget)) {
@@ -1570,12 +1570,12 @@ class SwaggerToDartGenerator {
           }
         }
 
-        // Проверка на несогласованность типов
+        // Check for type inconsistency
         if (lintConfig.isEnabled(LintRuleId.typeInconsistency)) {
           _checkTypeInconsistency(propSchema, propName, schemaName, lintConfig);
         }
 
-        // Проверка массива без items
+        // Check for array without items
         if (lintConfig.isEnabled(LintRuleId.arrayWithoutItems)) {
           final propType = propSchema['type'] as String?;
           if (propType == 'array' && !propSchema.containsKey('items')) {
@@ -1620,11 +1620,11 @@ class SwaggerToDartGenerator {
     final format = propSchema['format'] as String?;
     final isNullable = propSchema['nullable'] as bool? ?? false;
 
-    // Проверка: type: string, format: date-time, но не nullable
-    // Обычно date-time может быть null в некоторых случаях
+    // Check: type: string, format: date-time, but not nullable
+    // Usually date-time may be nullable in some cases
     if (propType == 'string' && format == 'date-time' && !isNullable) {
-      // Это не обязательно ошибка, но может быть предупреждением
-      // Пропускаем, так как это нормальная практика
+      // This is not necessarily an error, but might be a warning
+      // Skip, as this is a common practice
     }
 
     // Check: type: integer, but format is specified (format is usually used for string)
@@ -1660,7 +1660,7 @@ class SwaggerToDartGenerator {
     final severity = lintConfig.getSeverity(ruleId);
     switch (severity) {
       case LintSeverity.off:
-        // Не сообщаем
+        // Do not report
         break;
       case LintSeverity.warning:
         Logger.warning(message);
@@ -1671,7 +1671,7 @@ class SwaggerToDartGenerator {
     }
   }
 
-  /// Проверяет отсутствующие $ref после генерации.
+  /// Checks for missing $ref targets after generation.
   static void _checkMissingRefs(
     Map<String, dynamic> schemas,
     GenerationContext context,
@@ -1700,7 +1700,7 @@ class SwaggerToDartGenerator {
         }
       }
 
-      // Рекурсивно проверяем вложенные схемы
+      // Recursively check nested schemas
       final properties = schema['properties'] as Map<String, dynamic>? ?? {};
       properties.forEach((propName, propSchemaRaw) {
         if (propSchemaRaw is Map<String, dynamic>) {

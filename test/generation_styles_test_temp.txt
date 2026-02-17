@@ -180,7 +180,7 @@
         expect(result.generatedFiles.any((f) => f.contains('user.dart')), isTrue);
         expect(result.generatedFiles.any((f) => f.contains('order.dart')), isTrue);
 
-        // РџСЂРѕРІРµСЂСЏРµРј СЃРѕРґРµСЂР¶РёРјРѕРµ С„Р°Р№Р»Р° user.dart
+        // Check contents of generated user.dart file
         final userFile =
             result.generatedFiles.firstWhere((f) => f.contains('user.dart'));
         final userContent = await File(userFile).readAsString();
@@ -196,26 +196,26 @@
         final modelsDir = Directory('${tempDir.path}/models');
         await modelsDir.create(recursive: true);
 
-        // РЎРѕР·РґР°С‘Рј СЃСѓС‰РµСЃС‚РІСѓСЋС‰РёР№ С„Р°Р№Р» СЃ РјР°СЂРєРµСЂР°РјРё
+        // Create existing file with markers
         final existingUserFile = File('${modelsDir.path}/user.dart');
         await existingUserFile.writeAsString('''
 /*SWAGGER-TO-DART*/
 
 import 'package:some_package/some_package.dart';
 
-// РљР°СЃС‚РѕРјРЅС‹Р№ РєРѕРґ РґРѕ РјР°СЂРєРµСЂРѕРІ
+// Custom code before markers
 void customFunction() {
   print('Custom code');
 }
 
 /*SWAGGER-TO-DART: Codegen start*/
-// РЎС‚Р°СЂРѕРµ СЃРѕРґРµСЂР¶РёРјРѕРµ, РєРѕС‚РѕСЂРѕРµ Р±СѓРґРµС‚ Р·Р°РјРµРЅРµРЅРѕ
+// Old content that will be replaced
 class OldUser {
   final String oldField;
 }
 /*SWAGGER-TO-DART: Codegen stop*/
 
-// РљР°СЃС‚РѕРјРЅС‹Р№ РєРѕРґ РїРѕСЃР»Рµ РјР°СЂРєРµСЂРѕРІ
+// Custom code after markers
 extension UserExtension on User {
   String get displayName => name ?? 'Unknown';
 }

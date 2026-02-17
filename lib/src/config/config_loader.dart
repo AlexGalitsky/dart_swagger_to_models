@@ -7,17 +7,17 @@ import '../core/lint_rules.dart';
 import '../core/types.dart';
 import 'config.dart';
 
-/// Загрузчик конфигурации из YAML файла.
+/// Loader for generator configuration from YAML file.
 class ConfigLoader {
-  /// Загружает конфигурацию из файла.
+  /// Loads configuration from a file.
   ///
-  /// [configPath] - путь к конфигурационному файлу.
-  /// Если [configPath] равен null, ищет `dart_swagger_to_models.yaml` в корне проекта.
+  /// [configPath] - path to the configuration file.
+  /// If [configPath] is null, tries to find `dart_swagger_to_models.yaml` in project root.
   static Future<Config> loadConfig(
       String? configPath, String projectDir) async {
     String? actualPath = configPath;
 
-    // Если путь не указан, ищем файл в корне проекта
+    // If path is not provided, search file in project root
     if (actualPath == null) {
       final defaultPath = p.join(projectDir, 'dart_swagger_to_models.yaml');
       final file = File(defaultPath);
@@ -37,7 +37,7 @@ class ConfigLoader {
     return _parseConfig(content);
   }
 
-  /// Парсит YAML конфигурацию.
+  /// Parses YAML configuration.
   static Config _parseConfig(String yamlContent) {
     try {
       final yaml = loadYaml(yamlContent) as Map?;
@@ -45,16 +45,16 @@ class ConfigLoader {
         return Config.empty();
       }
 
-      // Парсим глобальные опции
+      // Parse global options
       GenerationStyle? defaultStyle;
       String? customStyleName;
       if (yaml['defaultStyle'] != null) {
         final styleStr = yaml['defaultStyle'] as String;
-        // Пытаемся распарсить как встроенный стиль
+        // Try to parse as built-in style
         try {
           defaultStyle = _parseStyle(styleStr);
         } catch (e) {
-          // Если не встроенный стиль, считаем кастомным
+          // If not a built-in style, treat as custom style
           customStyleName = styleStr;
         }
       }
@@ -63,14 +63,14 @@ class ConfigLoader {
       final projectDir = yaml['projectDir'] as String?;
       final useJsonKey = yaml['useJsonKey'] as bool?;
 
-      // Парсим lint конфигурацию
+      // Parse lint configuration
       LintConfig? lintConfig;
       final lint = yaml['lint'] as Map?;
       if (lint != null) {
         lintConfig = _parseLintConfig(lint);
       }
 
-      // Парсим переопределения для схем
+      // Parse schema overrides
       final schemaOverrides = <String, SchemaOverride>{};
       final schemas = yaml['schemas'] as Map?;
       if (schemas != null) {
@@ -110,7 +110,7 @@ class ConfigLoader {
     }
   }
 
-  /// Парсит переопределение для схемы.
+  /// Parses overrides for a single schema.
   static SchemaOverride _parseSchemaOverride(
       Map<dynamic, dynamic> overrideData) {
     final className = overrideData['className'] as String?;
@@ -140,27 +140,27 @@ class ConfigLoader {
     );
   }
 
-  /// Парсит конфигурацию lint правил.
+  /// Parses lint rules configuration.
   static LintConfig _parseLintConfig(Map<dynamic, dynamic> lintData) {
     final rules = <LintRuleId, LintRuleConfig>{};
 
-    // Если указан 'enabled: false', отключаем все правила
+    // If 'enabled: false' is specified, disable all rules
     final enabled = lintData['enabled'] as bool? ?? true;
     if (!enabled) {
       return LintConfig.disabled();
     }
 
-    // Парсим правила
+    // Parse individual rules
     final rulesData = lintData['rules'] as Map?;
     if (rulesData != null) {
       rulesData.forEach((ruleIdStr, ruleConfig) {
         if (ruleConfig is String) {
-          // Простой формат: "missing_type: warning"
+          // Simple format: "missing_type: warning"
           final ruleId = _parseRuleId(ruleIdStr.toString());
           final severity = LintRuleConfig.parseSeverity(ruleConfig);
           rules[ruleId] = LintRuleConfig(id: ruleId, severity: severity);
         } else if (ruleConfig is Map) {
-          // Расширенный формат: "missing_type: { severity: warning }"
+          // Extended format: "missing_type: { severity: warning }"
           final ruleId = _parseRuleId(ruleIdStr.toString());
           final severityStr = ruleConfig['severity'] as String? ?? 'warning';
           final severity = LintRuleConfig.parseSeverity(severityStr);
@@ -169,7 +169,7 @@ class ConfigLoader {
       });
     }
 
-    // Создаём конфигурацию по умолчанию и применяем переопределения
+    // Create default configuration and apply overrides
     final defaultConfig = LintConfig.defaultConfig();
     if (rules.isEmpty) {
       return defaultConfig;

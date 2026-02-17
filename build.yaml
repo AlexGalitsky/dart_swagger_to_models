@@ -1,8 +1,8 @@
 targets:
   $default:
     builders:
-      # Builder импортируется напрямую из src/build/swagger_builder.dart
-      # чтобы избежать загрузки dart:mirrors при обычном использовании
+      # Builder is imported directly from src/build/swagger_builder.dart
+      # to avoid loading dart:mirrors in normal usage
       dart_swagger_to_models|swaggerBuilder:
         enabled: true
         generate_for:

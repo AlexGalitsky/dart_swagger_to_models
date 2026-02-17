@@ -1,27 +1,27 @@
 import '../core/lint_rules.dart';
 import '../core/types.dart';
 
-/// Конфигурация генератора.
+/// Generator configuration.
 class Config {
-  /// Стиль генерации по умолчанию (встроенный стиль).
+  /// Default generation style (built-in style).
   final GenerationStyle? defaultStyle;
 
-  /// Имя кастомного стиля генерации (если используется вместо defaultStyle).
+  /// Name of custom generation style (if used instead of defaultStyle).
   final String? customStyleName;
 
-  /// Директория для выходных файлов.
+  /// Output directory for generated files.
   final String? outputDir;
 
-  /// Корневая директория проекта.
+  /// Project root directory.
   final String? projectDir;
 
-  /// Использовать @JsonKey для полей с snake_case JSON-ключами.
+  /// Whether to use @JsonKey for fields with snake_case JSON keys.
   final bool? useJsonKey;
 
-  /// Конфигурация lint правил.
+  /// Lint rules configuration.
   final LintConfig? lint;
 
-  /// Переопределения для отдельных схем.
+  /// Overrides for individual schemas.
   final Map<String, SchemaOverride> schemaOverrides;
 
   Config({
@@ -34,10 +34,10 @@ class Config {
     Map<String, SchemaOverride>? schemaOverrides,
   }) : schemaOverrides = schemaOverrides ?? {};
 
-  /// Создаёт пустую конфигурацию.
+  /// Creates an empty configuration.
   factory Config.empty() => Config();
 
-  /// Объединяет две конфигурации, где [other] имеет приоритет.
+  /// Merges two configs where [other] has priority.
   Config merge(Config other) {
     return Config(
       defaultStyle: other.defaultStyle ?? defaultStyle,
@@ -54,18 +54,18 @@ class Config {
   }
 }
 
-/// Переопределения для отдельной схемы.
+/// Overrides for a single schema.
 class SchemaOverride {
-  /// Кастомное имя класса (вместо автоматически сгенерированного).
+  /// Custom class name (instead of automatically generated).
   final String? className;
 
-  /// Маппинг имён полей (JSON ключ -> Dart имя поля).
+  /// Mapping of field names (JSON key -> Dart field name).
   final Map<String, String>? fieldNames;
 
-  /// Маппинг типов (JSON тип -> Dart тип).
+  /// Mapping of types (JSON type -> Dart type).
   final Map<String, String>? typeMapping;
 
-  /// Использовать @JsonKey для полей с snake_case JSON-ключами (переопределяет глобальную опцию).
+  /// Whether to use @JsonKey for fields with snake_case JSON keys (overrides global option).
   final bool? useJsonKey;
 
   SchemaOverride({
@@ -76,6 +76,6 @@ class SchemaOverride {
   })  : fieldNames = fieldNames ?? {},
         typeMapping = typeMapping ?? {};
 
-  /// Создаёт пустое переопределение.
+  /// Creates an empty override.
   factory SchemaOverride.empty() => SchemaOverride();
 }

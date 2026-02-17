@@ -5,22 +5,22 @@ import 'json_serializable_generator.dart';
 import 'plain_dart_generator.dart';
 import 'style_registry.dart';
 
-/// Фабрика для создания стратегий генерации.
+/// Factory for creating generation strategies.
 class GeneratorFactory {
-  /// Создаёт стратегию генерации на основе стиля.
+  /// Creates a generation strategy based on style.
   ///
-  /// Поддерживает как встроенные стили (через enum GenerationStyle),
-  /// так и кастомные стили (через строковое имя).
+  /// Supports both built-in styles (via GenerationStyle enum)
+  /// and custom styles (via string style name).
   static ClassGeneratorStrategy createStrategy(GenerationStyle? style,
       {String? customStyleName}) {
-    // Если указан кастомный стиль, используем его
+    // If a custom style is specified, use it
     if (customStyleName != null && customStyleName.isNotEmpty) {
       return StyleRegistry.createCustomStrategy(customStyleName);
     }
 
-    // Иначе используем встроенные стили
+    // Otherwise use built-in styles
     if (style == null) {
-      return PlainDartGenerator(); // По умолчанию
+      return PlainDartGenerator(); // Default
     }
 
     if (style == GenerationStyle.plainDart) {
@@ -29,26 +29,26 @@ class GeneratorFactory {
     if (style == GenerationStyle.jsonSerializable) {
       return JsonSerializableGenerator();
     }
-    // По умолчанию — freezed.
+    // Default fallback — freezed.
     return FreezedGenerator();
   }
 
-  /// Создаёт стратегию генерации из строкового имени стиля.
+  /// Creates generation strategy from a string style name.
   ///
-  /// Поддерживает как встроенные стили ('plain_dart', 'json_serializable', 'freezed'),
-  /// так и кастомные стили, зарегистрированные через StyleRegistry.
+  /// Supports both built-in styles ('plain_dart', 'json_serializable', 'freezed')
+  /// and custom styles registered via StyleRegistry.
   static ClassGeneratorStrategy createStrategyFromString(String styleName) {
-    // Пытаемся распарсить как встроенный стиль
+    // Try to parse as built-in style
     final style = _parseStyleName(styleName);
     if (style != null) {
       return createStrategy(style);
     }
 
-    // Если не встроенный стиль, пытаемся найти кастомный
+    // If not built-in, try to find a custom style
     return StyleRegistry.createCustomStrategy(styleName);
   }
 
-  /// Парсит строковое имя стиля в enum GenerationStyle.
+  /// Parses string style name into GenerationStyle enum.
   static GenerationStyle? _parseStyleName(String styleName) {
     switch (styleName.toLowerCase()) {
       case 'plain_dart':
