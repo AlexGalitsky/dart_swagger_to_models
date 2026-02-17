@@ -5,12 +5,14 @@ import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
 import 'package:yaml/yaml.dart';
 
+import 'src/config/config.dart';
 import 'src/core/types.dart';
 import 'src/generators/class_generator_strategy.dart';
 import 'src/generators/generator_factory.dart';
 
 export 'src/core/types.dart'
     show SpecVersion, GenerationStyle, GenerationResult, GenerationContext;
+export 'src/config/config.dart' show Config, SchemaOverride;
 
 /// Основной фасад библиотеки.
 class SwaggerToDartGenerator {
@@ -69,13 +71,21 @@ class SwaggerToDartGenerator {
   /// [style] — стиль генерации моделей (plain_dart/json_serializable/freezed).
   /// [projectDir] — корневая директория проекта для сканирования Dart файлов
   ///                (поиск существующих файлов моделей с маркерами).
+  /// [config] — конфигурация генератора (опционально).
   static Future<GenerationResult> generateModels({
     required String input,
-    String outputDir = 'lib/models',
+    String? outputDir,
     String libraryName = 'models',
-    GenerationStyle style = GenerationStyle.plainDart,
+    GenerationStyle? style,
     String? projectDir,
+    Config? config,
   }) async {
+    // Применяем конфигурацию с приоритетом: параметры > config > значения по умолчанию
+    final effectiveConfig = config ?? Config.empty();
+    final effectiveOutputDir = outputDir ?? effectiveConfig.outputDir ?? 'lib/models';
+    final effectiveStyle = style ?? effectiveConfig.defaultStyle ?? GenerationStyle.plainDart;
+    final effectiveProjectDir = projectDir ?? effectiveConfig.projectDir ?? '.';
+
     final spec = await loadSpec(input);
     final version = detectVersion(spec);
     final schemas = _extractSchemas(spec, version);
@@ -94,9 +104,10 @@ class SwaggerToDartGenerator {
     return _generateModelsPerFile(
       schemas: schemas,
       context: context,
-      style: style,
-      outputDir: outputDir,
-      projectDir: projectDir ?? '.',
+      style: effectiveStyle,
+      outputDir: effectiveOutputDir,
+      projectDir: effectiveProjectDir,
+      config: effectiveConfig,
     );
   }
 
@@ -107,6 +118,7 @@ class SwaggerToDartGenerator {
     required GenerationStyle style,
     required String outputDir,
     required String projectDir,
+    Config? config,
   }) async {
     final generatedFiles = <String>[];
     final outDir = Directory(outputDir);
@@ -131,7 +143,8 @@ class SwaggerToDartGenerator {
 
     // Генерируем enum'ы в отдельные файлы
     for (final entry in enumSchemas.entries) {
-      final modelName = _toPascalCase(entry.key);
+      final override = config?.schemaOverrides[entry.key];
+      final modelName = override?.className ?? _toPascalCase(entry.key);
       final fileName = _toSnakeCase(entry.key);
       final filePath = p.join(outputDir, '$fileName.dart');
       final existingContent = existingFiles[modelName];
@@ -162,7 +175,8 @@ class SwaggerToDartGenerator {
     for (final entry in schemas.entries) {
       final schemaMap = (entry.value ?? {}) as Map<String, dynamic>;
       if (!context.isEnum(schemaMap)) {
-        final modelName = _toPascalCase(entry.key);
+        final override = config?.schemaOverrides[entry.key];
+        final modelName = override?.className ?? _toPascalCase(entry.key);
         final fileName = _toSnakeCase(entry.key);
         final filePath = p.join(outputDir, '$fileName.dart');
         final existingContent = existingFiles[modelName];
@@ -174,6 +188,7 @@ class SwaggerToDartGenerator {
                 schemaMap,
                 context,
                 style,
+                override: override,
               )
             : _createNewFileWithClass(
                 entry.key,
@@ -181,6 +196,7 @@ class SwaggerToDartGenerator {
                 context,
                 style,
                 fileName,
+                override: override,
               );
 
         final file = File(filePath);
@@ -292,8 +308,9 @@ class SwaggerToDartGenerator {
     Map<String, dynamic> schema,
     GenerationContext context,
     GenerationStyle style,
-    String fileName,
-  ) {
+    String fileName, {
+    SchemaOverride? override,
+  }) {
     final buffer = StringBuffer();
     buffer.writeln('/*SWAGGER-TO-DART*/');
     buffer.writeln();
@@ -310,7 +327,7 @@ class SwaggerToDartGenerator {
 
     buffer.writeln('/*SWAGGER-TO-DART: Fields start*/');
     buffer.writeln();
-    buffer.write(_generateClass(className, schema, context, style));
+    buffer.write(_generateClass(className, schema, context, style, override: override));
     buffer.writeln();
     buffer.writeln('/*SWAGGER-TO-DART: Fields stop*/');
 
@@ -355,8 +372,9 @@ class SwaggerToDartGenerator {
     String className,
     Map<String, dynamic> schema,
     GenerationContext context,
-    GenerationStyle style,
-  ) {
+    GenerationStyle style, {
+    SchemaOverride? override,
+  }) {
     final startMarker = '/*SWAGGER-TO-DART: Fields start*/';
     final stopMarker = '/*SWAGGER-TO-DART: Fields stop*/';
 
@@ -371,12 +389,13 @@ class SwaggerToDartGenerator {
         context,
         style,
         _toSnakeCase(className),
+        override: override,
       );
     }
 
     final before = existingContent.substring(0, startIndex + startMarker.length);
     final after = existingContent.substring(stopIndex);
-    final newClassCode = _generateClass(className, schema, context, style);
+    final newClassCode = _generateClass(className, schema, context, style, override: override);
 
     return '$before\n$newClassCode\n$after';
   }
@@ -505,19 +524,20 @@ class SwaggerToDartGenerator {
     String name,
     Map<String, dynamic> schema,
     GenerationContext context,
-    GenerationStyle style,
-  ) {
+    GenerationStyle style, {
+    SchemaOverride? override,
+  }) {
     // Обработка allOf (OpenAPI 3)
     if (schema.containsKey('allOf') && schema['allOf'] is List) {
-      return _generateAllOfClass(name, schema, context, style);
+      return _generateAllOfClass(name, schema, context, style, override: override);
     }
 
     // Обработка oneOf/anyOf (OpenAPI 3) - пока генерируем как dynamic
     if (schema.containsKey('oneOf') || schema.containsKey('anyOf')) {
-      return _generateOneOfClass(name, schema, context);
+      return _generateOneOfClass(name, schema, context, override: override);
     }
 
-    final className = _toPascalCase(name);
+    final className = override?.className ?? _toPascalCase(name);
     final properties = schema['properties'] as Map<String, dynamic>? ?? {};
     final additionalProps = schema['additionalProperties'];
 
@@ -564,9 +584,27 @@ class SwaggerToDartGenerator {
       // - Если у поля явно указано nullable: true, оно генерируется как nullable.
       final isNonNullable = !propNullable;
 
-      final dartType = _dartTypeForSchema(propSchema, context, required: isNonNullable);
+      // Применяем переопределение имени поля, если есть
+      final fieldName = override?.fieldNames?[propName] ?? propName;
+
+      // Применяем маппинг типов, если есть
+      String dartType;
+      if (override?.typeMapping != null && override!.typeMapping!.isNotEmpty) {
+        final typeFromSchema = propSchema['type'] as String?;
+        if (typeFromSchema != null && override.typeMapping!.containsKey(typeFromSchema)) {
+          dartType = override.typeMapping![typeFromSchema]!;
+          if (!isNonNullable) {
+            dartType = '$dartType?';
+          }
+        } else {
+          dartType = _dartTypeForSchema(propSchema, context, required: isNonNullable);
+        }
+      } else {
+        dartType = _dartTypeForSchema(propSchema, context, required: isNonNullable);
+      }
+
       fieldInfos[propName] = FieldInfo(
-        name: propName,
+        name: fieldName,
         dartType: dartType,
         isRequired: isNonNullable,
         schema: propSchema,
@@ -592,8 +630,9 @@ class SwaggerToDartGenerator {
     String name,
     Map<String, dynamic> schema,
     GenerationContext context,
-    GenerationStyle style,
-  ) {
+    GenerationStyle style, {
+    SchemaOverride? override,
+  }) {
     final allOf = schema['allOf'] as List;
     final allProperties = <String, dynamic>{};
     final allRequired = <String>[];
@@ -655,9 +694,10 @@ class SwaggerToDartGenerator {
   static String _generateOneOfClass(
     String name,
     Map<String, dynamic> schema,
-    GenerationContext context,
-  ) {
-    final className = _toPascalCase(name);
+    GenerationContext context, {
+    SchemaOverride? override,
+  }) {
+    final className = override?.className ?? _toPascalCase(name);
     // Для oneOf/anyOf пока генерируем простой класс с dynamic
     return '''
 class $className {

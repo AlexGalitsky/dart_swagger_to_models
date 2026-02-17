@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:args/args.dart';
 import 'package:dart_swagger_to_models/dart_swagger_to_models.dart';
+import 'package:dart_swagger_to_models/src/config/config_loader.dart';
 
 void main(List<String> arguments) async {
   final parser = ArgParser()
@@ -16,7 +17,6 @@ void main(List<String> arguments) async {
       abbr: 'o',
       help: 'Директория для сохранения сгенерированных моделей.',
       valueHelp: 'lib/models',
-      defaultsTo: 'lib/models',
     )
     ..addOption(
       'library-name',
@@ -31,13 +31,18 @@ void main(List<String> arguments) async {
       help: 'Стиль генерации моделей: plain_dart, json_serializable или freezed.',
       valueHelp: 'plain_dart',
       allowed: ['plain_dart', 'json_serializable', 'freezed'],
-      defaultsTo: 'plain_dart',
     )
     ..addOption(
       'project-dir',
       help: 'Корневая директория проекта для сканирования Dart файлов (поиск существующих моделей).',
       valueHelp: '.',
       defaultsTo: '.',
+    )
+    ..addOption(
+      'config',
+      abbr: 'c',
+      help: 'Путь к конфигурационному файлу (по умолчанию ищется dart_swagger_to_models.yaml в корне проекта).',
+      valueHelp: 'dart_swagger_to_models.yaml',
     )
     ..addFlag(
       'help',
@@ -63,16 +68,20 @@ void main(List<String> arguments) async {
   }
 
   final input = argResults['input'] as String?;
-  final outputDir = argResults['output-dir'] as String;
+  final outputDir = argResults['output-dir'] as String?;
   final libraryName = argResults['library-name'] as String;
-  final styleName = argResults['style'] as String;
+  final styleName = argResults['style'] as String?;
   final projectDir = argResults['project-dir'] as String;
+  final configPath = argResults['config'] as String?;
 
-  final style = switch (styleName) {
-    'json_serializable' => GenerationStyle.jsonSerializable,
-    'freezed' => GenerationStyle.freezed,
-    _ => GenerationStyle.plainDart,
-  };
+  GenerationStyle? style;
+  if (styleName != null) {
+    style = switch (styleName) {
+      'json_serializable' => GenerationStyle.jsonSerializable,
+      'freezed' => GenerationStyle.freezed,
+      _ => GenerationStyle.plainDart,
+    };
+  }
 
   if (input == null || input.isEmpty) {
     stderr.writeln('Не указан --input/-i.');
@@ -83,12 +92,22 @@ void main(List<String> arguments) async {
   }
 
   try {
+    // Загружаем конфигурацию, если она есть
+    Config? config;
+    try {
+      config = await ConfigLoader.loadConfig(configPath, projectDir);
+    } catch (e) {
+      stderr.writeln('Предупреждение: не удалось загрузить конфигурацию: $e');
+      // Продолжаем без конфигурации
+    }
+
     final result = await SwaggerToDartGenerator.generateModels(
       input: input,
       outputDir: outputDir,
       libraryName: libraryName,
       style: style,
       projectDir: projectDir,
+      config: config,
     );
 
     stdout.writeln('Генерация завершена успешно.');

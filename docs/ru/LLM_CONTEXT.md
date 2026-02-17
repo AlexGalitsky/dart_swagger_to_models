@@ -48,8 +48,16 @@
 
 - **CLI-вход**: `bin/dart_swagger_to_models.dart`
   - Парсит опции (`--input`, `--output-dir`, `--library-name`, `--style`,
-    `--project-dir`).
-  - Вызывает `SwaggerToDartGenerator.generateModels`.
+    `--project-dir`, `--config`).
+  - Загружает конфигурацию из `dart_swagger_to_models.yaml` (если существует).
+  - Вызывает `SwaggerToDartGenerator.generateModels` с конфигурацией.
+
+- **Конфигурация**: `lib/src/config/*.dart`
+  - `config.dart`: классы `Config` и `SchemaOverride`.
+  - `config_loader.dart`: `ConfigLoader` для парсинга YAML конфигурационных файлов.
+  - Поддерживает глобальные опции (`defaultStyle`, `outputDir`, `projectDir`).
+  - Поддерживает переопределения для схем (`className`, `fieldNames`, `typeMapping`).
+  - Приоритет: аргументы CLI > конфигурационный файл > значения по умолчанию.
 
 - **Тесты**: `test/dart_swagger_to_models_test.dart`
   - E2E-тесты:
@@ -117,6 +125,14 @@ dart run dart_swagger_to_models:dart_swagger_to_models \
   --input api.yaml \
   --output-dir lib/models \
   --project-dir .
+```
+
+- Использование конфигурационного файла:
+
+```bash
+dart run dart_swagger_to_models:dart_swagger_to_models \
+  --input api.yaml \
+  --config dart_swagger_to_models.yaml
 ```
 
 ### Рекомендации при изменении проекта (для LLM)

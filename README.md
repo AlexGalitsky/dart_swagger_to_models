@@ -45,7 +45,41 @@ Models are generated from `definitions` / `components.schemas` with
   - `json_serializable` — classes with `@JsonSerializable()` and delegation to `_$ClassFromJson` / `_$ClassToJson`,
   - `freezed` — immutable `@freezed` classes with `const factory` and `fromJson`.
 - **`--project-dir`**: project root directory for scanning Dart files (searching for existing model files, default: `.`).
+- **`--config`, `-c`**: path to configuration file (default: searches for `dart_swagger_to_models.yaml` in project root).
 - **`--help`, `-h`**: show help.
+
+### Configuration file
+
+You can create a `dart_swagger_to_models.yaml` file in your project root to configure the generator:
+
+```yaml
+# Global options
+defaultStyle: json_serializable
+outputDir: lib/generated
+projectDir: .
+
+# Schema-specific overrides
+schemas:
+  User:
+    className: CustomUser
+    fieldNames:
+      user_id: userId
+      user_name: userName
+    typeMapping:
+      string: MyString
+      integer: MyInt
+```
+
+**Priority order**: CLI arguments > config file > defaults
+
+**Configuration options:**
+- `defaultStyle`: default generation style (`plain_dart`, `json_serializable`, `freezed`)
+- `outputDir`: default output directory
+- `projectDir`: default project directory
+- `schemas`: per-schema overrides:
+  - `className`: custom class name
+  - `fieldNames`: mapping from JSON keys to Dart field names
+  - `typeMapping`: mapping from schema types to Dart types
 
 ### Example
 

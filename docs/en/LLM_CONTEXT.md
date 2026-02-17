@@ -43,8 +43,16 @@ the project context.
 
 - **CLI entrypoint**: `bin/dart_swagger_to_models.dart`
   - Parses options (`--input`, `--output-dir`, `--library-name`, `--style`,
-    `--project-dir`).
-  - Calls `SwaggerToDartGenerator.generateModels`.
+    `--project-dir`, `--config`).
+  - Loads configuration from `dart_swagger_to_models.yaml` (if exists).
+  - Calls `SwaggerToDartGenerator.generateModels` with config.
+
+- **Configuration**: `lib/src/config/*.dart`
+  - `config.dart`: `Config` and `SchemaOverride` classes.
+  - `config_loader.dart`: `ConfigLoader` for parsing YAML config files.
+  - Supports global options (`defaultStyle`, `outputDir`, `projectDir`).
+  - Supports per-schema overrides (`className`, `fieldNames`, `typeMapping`).
+  - Priority: CLI arguments > config file > defaults.
 
 - **Tests**: `test/dart_swagger_to_models_test.dart`
   - End-to-end tests for:
@@ -113,6 +121,14 @@ dart run dart_swagger_to_models:dart_swagger_to_models \
   --input api.yaml \
   --output-dir lib/models \
   --project-dir .
+```
+
+- Using configuration file:
+
+```bash
+dart run dart_swagger_to_models:dart_swagger_to_models \
+  --input api.yaml \
+  --config dart_swagger_to_models.yaml
 ```
 
 ### When modifying this project (for LLMs)

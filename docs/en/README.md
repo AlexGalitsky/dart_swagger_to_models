@@ -45,7 +45,32 @@ dart run dart_swagger_to_models:dart_swagger_to_models \
   - `json_serializable` — классы с `@JsonSerializable()` и делегацией в `_$ClassFromJson`/`_$ClassToJson`,
   - `freezed` — иммутабельные классы `@freezed` с `const factory` и `fromJson`.
 - **`--project-dir`**: корневая директория проекта для сканирования Dart файлов (поиск существующих файлов моделей, по умолчанию `.`).
+- **`--config`, `-c`**: путь к конфигурационному файлу (по умолчанию ищется `dart_swagger_to_models.yaml` в корне проекта).
 - **`--help`, `-h`**: показать помощь.
+
+### Конфигурационный файл
+
+Вы можете создать файл `dart_swagger_to_models.yaml` в корне проекта для настройки генератора:
+
+```yaml
+# Глобальные опции
+defaultStyle: json_serializable
+outputDir: lib/generated
+projectDir: .
+
+# Переопределения для отдельных схем
+schemas:
+  User:
+    className: CustomUser
+    fieldNames:
+      user_id: userId
+      user_name: userName
+    typeMapping:
+      string: MyString
+      integer: MyInt
+```
+
+**Приоритет**: аргументы CLI > конфигурационный файл > значения по умолчанию
 
 ### Пример результата
 
