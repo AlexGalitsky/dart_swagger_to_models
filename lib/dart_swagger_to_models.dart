@@ -16,6 +16,8 @@ import 'src/generators/generator_factory.dart';
 export 'src/core/types.dart'
     show SpecVersion, GenerationStyle, GenerationResult, GenerationContext;
 export 'src/config/config.dart' show Config, SchemaOverride;
+export 'src/generators/class_generator_strategy.dart' show ClassGeneratorStrategy, FieldInfo;
+export 'src/generators/style_registry.dart' show StyleRegistry;
 
 /// Основной фасад библиотеки.
 class SwaggerToDartGenerator {
@@ -88,7 +90,10 @@ class SwaggerToDartGenerator {
     // Применяем конфигурацию с приоритетом: параметры > config > значения по умолчанию
     final effectiveConfig = config ?? Config.empty();
     final effectiveOutputDir = outputDir ?? effectiveConfig.outputDir ?? 'lib/models';
-    final effectiveStyle = style ?? effectiveConfig.defaultStyle ?? GenerationStyle.plainDart;
+    // Если в конфиге указан кастомный стиль, используем его; иначе используем defaultStyle или переданный style
+    final effectiveStyle = effectiveConfig.customStyleName != null
+        ? null // Кастомный стиль будет использован через config.customStyleName
+        : (style ?? effectiveConfig.defaultStyle ?? GenerationStyle.plainDart);
     final effectiveProjectDir = projectDir ?? effectiveConfig.projectDir ?? '.';
 
     final spec = await loadSpec(input);
@@ -135,7 +140,7 @@ class SwaggerToDartGenerator {
   static Future<GenerationResult> _generateModelsPerFile({
     required Map<String, dynamic> schemas,
     required GenerationContext context,
-    required GenerationStyle style,
+    GenerationStyle? style,
     required String outputDir,
     required String projectDir,
     Config? config,
@@ -238,6 +243,7 @@ class SwaggerToDartGenerator {
                 entry.value,
                 context,
                 style,
+                config: config,
               )
             : _createNewFileWithEnum(
                 entry.key,
@@ -245,6 +251,7 @@ class SwaggerToDartGenerator {
                 context,
                 style,
                 fileName,
+                config: config,
               );
 
         final file = File(filePath);
@@ -425,16 +432,17 @@ class SwaggerToDartGenerator {
     String enumName,
     Map<String, dynamic> schema,
     GenerationContext context,
-    GenerationStyle style,
-    String fileName,
-  ) {
+    GenerationStyle? style,
+    String fileName, {
+    Config? config,
+  }) {
     final buffer = StringBuffer();
     buffer.writeln('/*SWAGGER-TO-DART*/');
     buffer.writeln();
 
     // Добавляем импорты и part'ы в зависимости от стиля
     // Для enum'ов импорты не нужны, но оставляем для консистентности
-    final strategy = GeneratorFactory.createStrategy(style);
+    final strategy = GeneratorFactory.createStrategy(style, customStyleName: config?.customStyleName);
     final imports = strategy.generateImportsAndParts(fileName);
     for (final import in imports) {
       buffer.writeln(import);
@@ -552,7 +560,7 @@ class SwaggerToDartGenerator {
     String className,
     Map<String, dynamic> schema,
     GenerationContext context,
-    GenerationStyle style,
+    GenerationStyle? style,
     String fileName,
     String outputDir, {
     Config? config,
@@ -568,7 +576,7 @@ class SwaggerToDartGenerator {
     final modelImports = _generateImportsForDependencies(dependencies, outputDir, '$fileName.dart');
 
     // Добавляем импорты и part'ы в зависимости от стиля
-    final strategy = GeneratorFactory.createStrategy(style);
+    final strategy = GeneratorFactory.createStrategy(style, customStyleName: config?.customStyleName);
     final styleImports = strategy.generateImportsAndParts(fileName);
     
     // Объединяем импорты: сначала импорты моделей, потом стилевые
@@ -595,8 +603,9 @@ class SwaggerToDartGenerator {
     String enumName,
     Map<String, dynamic> schema,
     GenerationContext context,
-    GenerationStyle style,
-  ) {
+    GenerationStyle? style, {
+    Config? config,
+  }) {
     final startMarker = '/*SWAGGER-TO-DART: Fields start*/';
     final stopMarker = '/*SWAGGER-TO-DART: Fields stop*/';
 
@@ -611,6 +620,7 @@ class SwaggerToDartGenerator {
         context,
         style,
         _toSnakeCase(enumName),
+        config: config,
       );
     }
 
@@ -627,7 +637,7 @@ class SwaggerToDartGenerator {
     String className,
     Map<String, dynamic> schema,
     GenerationContext context,
-    GenerationStyle style,
+    GenerationStyle? style,
     String outputDir, {
     Config? config,
     SchemaOverride? override,
@@ -791,7 +801,7 @@ class SwaggerToDartGenerator {
     String name,
     Map<String, dynamic> schema,
     GenerationContext context,
-    GenerationStyle style, {
+    GenerationStyle? style, {
     Config? config,
     SchemaOverride? override,
   }) {
@@ -894,7 +904,7 @@ class SwaggerToDartGenerator {
     final useJsonKey = override?.useJsonKey ?? config?.useJsonKey ?? false;
 
     // Используем стратегию для генерации класса
-    final strategy = GeneratorFactory.createStrategy(style);
+    final strategy = GeneratorFactory.createStrategy(style, customStyleName: config?.customStyleName);
     return strategy.generateFullClass(
       className,
       fieldInfos,
@@ -916,7 +926,7 @@ class SwaggerToDartGenerator {
     String name,
     Map<String, dynamic> schema,
     GenerationContext context,
-    GenerationStyle style, {
+    GenerationStyle? style, {
     Config? config,
     SchemaOverride? override,
   }) {

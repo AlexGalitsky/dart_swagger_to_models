@@ -43,7 +43,8 @@ dart run dart_swagger_to_models:dart_swagger_to_models \
 - **`--style`, `-s`**: стиль генерации моделей:
   - `plain_dart` — простые Dart классы с ручным `fromJson`/`toJson` (по умолчанию),
   - `json_serializable` — классы с `@JsonSerializable()` и делегацией в `_$ClassFromJson`/`_$ClassToJson`,
-  - `freezed` — иммутабельные классы `@freezed` с `const factory` и `fromJson`.
+  - `freezed` — иммутабельные классы `@freezed` с `const factory` и `fromJson`,
+  - или имя кастомного стиля (должен быть зарегистрирован через `StyleRegistry`).
 - **`--project-dir`**: корневая директория проекта для сканирования Dart файлов (поиск существующих файлов моделей, по умолчанию `.`).
 - **`--config`, `-c`**: путь к конфигурационному файлу (по умолчанию ищется `dart_swagger_to_models.yaml` в корне проекта).
 - **`--verbose`, `-v`**: подробный вывод (включает отладочную информацию).

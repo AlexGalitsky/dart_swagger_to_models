@@ -43,7 +43,8 @@ Models are generated from `definitions` / `components.schemas` with
 - **`--style`, `-s`**: model generation style:
   - `plain_dart` — plain Dart classes with manual `fromJson`/`toJson` (default),
   - `json_serializable` — classes with `@JsonSerializable()` and delegation to `_$ClassFromJson` / `_$ClassToJson`,
-  - `freezed` — immutable `@freezed` classes with `const factory` and `fromJson`.
+  - `freezed` — immutable `@freezed` classes with `const factory` and `fromJson`,
+  - or a custom style name (must be registered via `StyleRegistry`).
 - **`--project-dir`**: project root directory for scanning Dart files (searching for existing model files, default: `.`).
 - **`--config`, `-c`**: path to configuration file (default: searches for `dart_swagger_to_models.yaml` in project root).
 - **`--verbose`, `-v`**: detailed output (includes debug information).

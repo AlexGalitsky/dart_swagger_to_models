@@ -51,6 +51,11 @@ the project context.
     - Adds `@freezed`, `const factory`, and `fromJson`.
   - `generator_factory.dart`:
     - Maps `GenerationStyle` → corresponding strategy implementation.
+    - Supports custom styles via `StyleRegistry`.
+  - `style_registry.dart`:
+    - `StyleRegistry` class for registering custom generation styles.
+    - `register()` method to register custom styles.
+    - `createCustomStrategy()` to create strategy instances.
 
 - **CLI entrypoint**: `bin/dart_swagger_to_models.dart`
   - Parses options (`--input`, `--output-dir`, `--library-name`, `--style`,
@@ -94,6 +99,10 @@ the project context.
       - Adding new schemas.
       - Removing schemas.
       - Modifying single schema in large spec.
+    - Pluggable styles:
+      - Registering custom styles via `StyleRegistry`.
+      - Using custom styles via config file or CLI.
+      - Example: Equatable style generator.
 
 ### Key invariants / rules
 

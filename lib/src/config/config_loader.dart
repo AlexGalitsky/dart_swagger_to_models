@@ -46,9 +46,16 @@ class ConfigLoader {
 
       // Парсим глобальные опции
       GenerationStyle? defaultStyle;
+      String? customStyleName;
       if (yaml['defaultStyle'] != null) {
         final styleStr = yaml['defaultStyle'] as String;
-        defaultStyle = _parseStyle(styleStr);
+        // Пытаемся распарсить как встроенный стиль
+        try {
+          defaultStyle = _parseStyle(styleStr);
+        } catch (e) {
+          // Если не встроенный стиль, считаем кастомным
+          customStyleName = styleStr;
+        }
       }
 
       final outputDir = yaml['outputDir'] as String?;
@@ -75,6 +82,7 @@ class ConfigLoader {
 
       return Config(
         defaultStyle: defaultStyle,
+        customStyleName: customStyleName,
         outputDir: outputDir,
         projectDir: projectDir,
         useJsonKey: useJsonKey,

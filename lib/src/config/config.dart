@@ -3,8 +3,11 @@ import '../core/types.dart';
 
 /// Конфигурация генератора.
 class Config {
-  /// Стиль генерации по умолчанию.
+  /// Стиль генерации по умолчанию (встроенный стиль).
   final GenerationStyle? defaultStyle;
+
+  /// Имя кастомного стиля генерации (если используется вместо defaultStyle).
+  final String? customStyleName;
 
   /// Директория для выходных файлов.
   final String? outputDir;
@@ -23,6 +26,7 @@ class Config {
 
   Config({
     this.defaultStyle,
+    this.customStyleName,
     this.outputDir,
     this.projectDir,
     this.useJsonKey,
@@ -37,6 +41,7 @@ class Config {
   Config merge(Config other) {
     return Config(
       defaultStyle: other.defaultStyle ?? defaultStyle,
+      customStyleName: other.customStyleName ?? customStyleName,
       outputDir: other.outputDir ?? outputDir,
       projectDir: other.projectDir ?? projectDir,
       useJsonKey: other.useJsonKey ?? useJsonKey,

@@ -1,3 +1,36 @@
+## 0.3.1 (Unreleased)
+
+### Added
+- Pluggable styles (подключаемые стили)
+  - Public API for registering custom generation styles:
+    - `StyleRegistry` class for registering custom styles
+    - `StyleRegistry.register()` method to register a custom style
+    - `StyleRegistry.createCustomStrategy()` to create a strategy instance
+    - Support for custom style names in configuration files
+    - Support for custom style names via CLI `--style` option
+  - Example custom style:
+    - `example/custom_style_equatable.dart` - Complete example of an Equatable style generator
+  - Documentation:
+    - `docs/en/CUSTOM_STYLES.md` - Step-by-step guide on creating custom styles
+    - `docs/ru/CUSTOM_STYLES.md` - Step-by-step guide in Russian
+  - Usage:
+    ```dart
+    // Register a custom style
+    StyleRegistry.register('my_style', () => MyCustomGenerator());
+    
+    // Use in config file
+    // dart_swagger_to_models.yaml:
+    // defaultStyle: my_style
+    
+    // Or via CLI
+    // --style my_style
+    ```
+  - Features:
+    - External packages can provide their own `ClassGeneratorStrategy` implementations
+    - Style name → strategy mapping via `StyleRegistry`
+    - Custom styles work alongside built-in styles (`plain_dart`, `json_serializable`, `freezed`)
+    - Clear error messages when using unregistered styles
+
 ## 0.5.1 (Unreleased)
 
 ### Added

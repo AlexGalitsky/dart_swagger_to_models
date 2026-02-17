@@ -111,12 +111,24 @@ void main(List<String> arguments) async {
   }
 
   GenerationStyle? style;
+  String? customStyleName;
   if (styleName != null) {
-    style = switch (styleName) {
-      'json_serializable' => GenerationStyle.jsonSerializable,
-      'freezed' => GenerationStyle.freezed,
-      _ => GenerationStyle.plainDart,
-    };
+    // Пытаемся распарсить как встроенный стиль
+    switch (styleName.toLowerCase()) {
+      case 'plain_dart':
+        style = GenerationStyle.plainDart;
+        break;
+      case 'json_serializable':
+        style = GenerationStyle.jsonSerializable;
+        break;
+      case 'freezed':
+        style = GenerationStyle.freezed;
+        break;
+      default:
+        // Если не встроенный стиль, считаем кастомным
+        customStyleName = styleName;
+        break;
+    }
   }
 
   if (input == null || input.isEmpty) {
@@ -136,6 +148,26 @@ void main(List<String> arguments) async {
     } catch (e) {
       Logger.warning('Не удалось загрузить конфигурацию: $e');
       // Продолжаем без конфигурации
+    }
+
+    // Если указан кастомный стиль через CLI, добавляем его в конфиг
+    if (customStyleName != null) {
+      if (config != null) {
+        config = Config(
+          defaultStyle: config.defaultStyle,
+          customStyleName: customStyleName, // CLI имеет приоритет
+          outputDir: config.outputDir,
+          projectDir: config.projectDir,
+          useJsonKey: config.useJsonKey,
+          lint: config.lint,
+          schemaOverrides: config.schemaOverrides,
+        );
+      } else {
+        // Если конфига нет, создаём новый с кастомным стилем
+        config = Config(
+          customStyleName: customStyleName,
+        );
+      }
     }
 
     Logger.info('Загрузка спецификации из: $input');
