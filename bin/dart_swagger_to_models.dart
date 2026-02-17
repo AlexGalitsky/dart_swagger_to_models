@@ -45,6 +45,11 @@ void main(List<String> arguments) async {
       valueHelp: 'dart_swagger_to_models.yaml',
     )
     ..addFlag(
+      'format',
+      help: 'Запустить dart format для всех сгенерированных файлов.',
+      defaultsTo: false,
+    )
+    ..addFlag(
       'help',
       abbr: 'h',
       negatable: false,
@@ -73,6 +78,7 @@ void main(List<String> arguments) async {
   final styleName = argResults['style'] as String?;
   final projectDir = argResults['project-dir'] as String;
   final configPath = argResults['config'] as String?;
+  final shouldFormat = argResults['format'] as bool;
 
   GenerationStyle? style;
   if (styleName != null) {
@@ -109,6 +115,25 @@ void main(List<String> arguments) async {
       projectDir: projectDir,
       config: config,
     );
+
+    // Форматируем файлы, если указан флаг --format
+    if (shouldFormat) {
+      stdout.writeln('Форматирование сгенерированных файлов...');
+      for (final file in result.generatedFiles) {
+        try {
+          final process = await Process.run(
+            'dart',
+            ['format', file],
+            runInShell: true,
+          );
+          if (process.exitCode != 0) {
+            stderr.writeln('Предупреждение: не удалось отформатировать $file');
+          }
+        } catch (e) {
+          stderr.writeln('Предупреждение: не удалось запустить dart format для $file: $e');
+        }
+      }
+    }
 
     stdout.writeln('Генерация завершена успешно.');
     stdout.writeln('Директория: ${result.outputDirectory}');

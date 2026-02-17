@@ -96,8 +96,22 @@ class SwaggerToDartGenerator {
       );
     }
 
+    // Для правильной работы resolveRef нужно передать все схемы
+    // Для Swagger 2.0 это definitions, для OpenAPI 3 это components.schemas
+    final allSchemasMap = _getAllSchemas(spec, version);
+    // Для resolveRef нужно структурировать схемы правильно
+    final schemasForContext = version == SpecVersion.swagger2
+        ? <String, dynamic>{
+            'definitions': allSchemasMap,
+          }
+        : <String, dynamic>{
+            'components': <String, dynamic>{
+              'schemas': allSchemasMap,
+            },
+          };
+
     final context = GenerationContext(
-      allSchemas: _getAllSchemas(spec, version),
+      allSchemas: schemasForContext,
       version: version,
     );
 
@@ -188,6 +202,7 @@ class SwaggerToDartGenerator {
                 schemaMap,
                 context,
                 style,
+                outputDir,
                 override: override,
               )
             : _createNewFileWithClass(
@@ -196,6 +211,7 @@ class SwaggerToDartGenerator {
                 context,
                 style,
                 fileName,
+                outputDir,
                 override: override,
               );
 
@@ -302,26 +318,130 @@ class SwaggerToDartGenerator {
     return buffer.toString();
   }
 
+  /// Собирает зависимости (типы, используемые в схеме) для генерации импортов.
+  static Set<String> _collectDependencies(
+    Map<String, dynamic> schema,
+    GenerationContext context,
+    String currentSchemaName,
+    String outputDir,
+  ) {
+    final dependencies = <String>{};
+    final visited = <String>{};
+
+    void collectFromSchema(Map<String, dynamic> schemaMap, String? parentName) {
+      // Обработка $ref
+      final ref = schemaMap[r'$ref'] as String?;
+      if (ref != null) {
+        final refSchema = context.resolveRef(ref);
+        if (refSchema != null) {
+          final refName = ref.split('/').last;
+          final refTypeName = _toPascalCase(refName);
+          
+          // Не добавляем зависимость на самого себя
+          if (refTypeName != currentSchemaName && !visited.contains(refTypeName)) {
+            visited.add(refTypeName);
+            // Проверяем, что это не встроенный тип
+            if (refSchema.containsKey('properties') || context.isEnum(refSchema)) {
+              dependencies.add(refTypeName);
+            }
+            // Рекурсивно собираем зависимости из ref схемы
+            collectFromSchema(refSchema, refTypeName);
+          }
+        }
+      }
+
+      // Обработка properties
+      final properties = schemaMap['properties'] as Map<String, dynamic>?;
+      if (properties != null) {
+        properties.forEach((_, propSchema) {
+          if (propSchema is Map<String, dynamic>) {
+            collectFromSchema(propSchema, parentName);
+          }
+        });
+      }
+
+      // Обработка items (для массивов)
+      final items = schemaMap['items'] as Map<String, dynamic>?;
+      if (items != null) {
+        collectFromSchema(items, parentName);
+      }
+
+      // Обработка additionalProperties
+      final additionalProps = schemaMap['additionalProperties'];
+      if (additionalProps is Map<String, dynamic>) {
+        collectFromSchema(additionalProps, parentName);
+      }
+
+      // Обработка allOf
+      final allOf = schemaMap['allOf'] as List?;
+      if (allOf != null) {
+        for (final item in allOf) {
+          if (item is Map<String, dynamic>) {
+            collectFromSchema(item, parentName);
+          }
+        }
+      }
+    }
+
+    collectFromSchema(schema, null);
+    return dependencies;
+  }
+
+  /// Генерирует импорты для зависимостей.
+  static List<String> _generateImportsForDependencies(
+    Set<String> dependencies,
+    String outputDir,
+    String currentFileName,
+  ) {
+    final imports = <String>[];
+    final currentFilePath = p.join(outputDir, currentFileName);
+    final currentDir = p.dirname(currentFilePath);
+    
+    for (final dep in dependencies) {
+      final depFileName = _toSnakeCase(dep);
+      final depPath = p.join(outputDir, '$depFileName.dart');
+      final relativePath = p.relative(depPath, from: currentDir);
+      // Нормализуем путь для импорта (используем / вместо \)
+      var importPath = relativePath.replaceAll(r'\', '/');
+      // Убираем расширение .dart
+      if (importPath.endsWith('.dart')) {
+        importPath = importPath.substring(0, importPath.length - 5);
+      }
+      imports.add("import '$importPath';");
+    }
+
+    return imports..sort();
+  }
+
   /// Создаёт новый файл с классом.
   static String _createNewFileWithClass(
     String className,
     Map<String, dynamic> schema,
     GenerationContext context,
     GenerationStyle style,
-    String fileName, {
+    String fileName,
+    String outputDir, {
     SchemaOverride? override,
   }) {
     final buffer = StringBuffer();
     buffer.writeln('/*SWAGGER-TO-DART*/');
     buffer.writeln();
 
+    // Собираем зависимости для импортов
+    final schemaName = override?.className ?? _toPascalCase(className);
+    final dependencies = _collectDependencies(schema, context, schemaName, outputDir);
+    final modelImports = _generateImportsForDependencies(dependencies, outputDir, '$fileName.dart');
+
     // Добавляем импорты и part'ы в зависимости от стиля
     final strategy = GeneratorFactory.createStrategy(style);
-    final imports = strategy.generateImportsAndParts(fileName);
-    for (final import in imports) {
+    final styleImports = strategy.generateImportsAndParts(fileName);
+    
+    // Объединяем импорты: сначала импорты моделей, потом стилевые
+    final allImports = <String>[...modelImports, ...styleImports];
+    for (final import in allImports) {
       buffer.writeln(import);
     }
-    if (imports.isNotEmpty) {
+    if (allImports.isNotEmpty) {
       buffer.writeln();
     }
 
@@ -372,7 +492,8 @@ class SwaggerToDartGenerator {
     String className,
     Map<String, dynamic> schema,
     GenerationContext context,
-    GenerationStyle style, {
+    GenerationStyle style,
+    String outputDir, {
     SchemaOverride? override,
   }) {
     final startMarker = '/*SWAGGER-TO-DART: Fields start*/';
@@ -389,6 +510,7 @@ class SwaggerToDartGenerator {
         context,
         style,
         _toSnakeCase(className),
+        outputDir,
         override: override,
       );
     }
@@ -466,13 +588,21 @@ class SwaggerToDartGenerator {
     final enumValues = schema['enum'] as List?;
     if (enumValues == null || enumValues.isEmpty) return '';
 
+    // Поддержка x-enumNames / x-enum-varnames
+    final enumNames = schema['x-enumNames'] as List? ?? schema['x-enum-varnames'] as List?;
+    final hasCustomNames = enumNames != null && enumNames.length == enumValues.length;
+
     final buffer = StringBuffer()
       ..writeln('enum $enumName {');
 
     for (var i = 0; i < enumValues.length; i++) {
       final value = enumValues[i];
       String enumValue;
-      if (value is String) {
+      
+      if (hasCustomNames && enumNames![i] is String) {
+        // Используем кастомное имя из x-enumNames / x-enum-varnames
+        enumValue = _toEnumValueName(enumNames[i] as String);
+      } else if (value is String) {
         // Преобразуем строку в валидное имя enum значения
         enumValue = _toEnumValueName(value);
       } else {
