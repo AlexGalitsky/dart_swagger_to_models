@@ -104,11 +104,11 @@ linter:
     - use_test_throws_matchers
 
 analyzer:
-  exclude:
-    - build/**
-    - test_output/**
-    - example/**
-    - lib/config_models/**
+          exclude:
+            - build/**
+            - test_output/**
+            - example/**
+            - doc/**
   errors:
     missing_required_param: error
     missing_return: error

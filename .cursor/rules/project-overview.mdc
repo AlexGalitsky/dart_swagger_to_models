@@ -24,6 +24,6 @@ Nullability rule:
 
 For a fast LLM-oriented summary of the project, see:
 
-- [docs/en/LLM_CONTEXT.md](mdc:docs/en/LLM_CONTEXT.md)
-- [docs/ru/LLM_CONTEXT.md](mdc:docs/ru/LLM_CONTEXT.md)
+- [doc/en/LLM_CONTEXT.md](mdc:doc/en/LLM_CONTEXT.md)
+- [doc/ru/LLM_CONTEXT.md](mdc:doc/ru/LLM_CONTEXT.md)
 

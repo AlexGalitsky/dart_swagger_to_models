@@ -1,0 +1,41 @@
+# Files and directories to exclude from pub.dev package
+# See https://dart.dev/tools/pub/package-layout#pubignore
+
+# Build outputs
+build/
+*.dart.js
+*.dart.js.map
+*.info.json
+
+# Cache files
+.dart_swagger_to_models.cache
+*.cache
+
+# Generated files
+*.g.dart
+*.freezed.dart
+*.gr.dart
+*.json_serializable.dart
+*.build.dart
+
+# Test output
+test_output/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+generation_styles_test_temp.txt
+
+# Test/example files in lib/
+lib/config_models/

@@ -29,9 +29,8 @@ class StyleRegistry {
   }
 
   /// Checks if style is registered.
-  static bool isRegistered(String styleName) {
-    return _customStyles.containsKey(styleName.toLowerCase());
-  }
+  static bool isRegistered(String styleName) =>
+      _customStyles.containsKey(styleName.toLowerCase());
 
   /// Creates strategy for custom style.
   /// 

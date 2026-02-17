@@ -3,14 +3,10 @@ import 'class_generator_strategy.dart';
 /// Стратегия генерации для plain_dart стиля.
 class PlainDartGenerator extends ClassGeneratorStrategy {
   @override
-  List<String> generateImportsAndParts(String fileName) {
-    return [];
-  }
+  List<String> generateImportsAndParts(String fileName) => [];
 
   @override
-  List<String> generateClassAnnotations(String className) {
-    return [];
-  }
+  List<String> generateClassAnnotations(String className) => [];
 
   @override
   String generateFullClass(
