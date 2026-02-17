@@ -11,18 +11,11 @@ screenshots:
     path: images/logo.png
 
 topics:
-  - dart
   - swagger
   - openapi
-  - code-generation
   - codegen
-  - models
-  - json-serialization
   - freezed
-  - json-serializable
   - build-runner
-  - openapi-generator
-  - swagger-generator
 
 environment:
   sdk: ^3.3.0
