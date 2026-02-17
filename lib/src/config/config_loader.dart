@@ -52,6 +52,7 @@ class ConfigLoader {
 
       final outputDir = yaml['outputDir'] as String?;
       final projectDir = yaml['projectDir'] as String?;
+      final useJsonKey = yaml['useJsonKey'] as bool?;
 
       // Парсим переопределения для схем
       final schemaOverrides = <String, SchemaOverride>{};
@@ -68,6 +69,7 @@ class ConfigLoader {
         defaultStyle: defaultStyle,
         outputDir: outputDir,
         projectDir: projectDir,
+        useJsonKey: useJsonKey,
         schemaOverrides: schemaOverrides,
       );
     } catch (e) {
@@ -94,6 +96,7 @@ class ConfigLoader {
     final className = overrideData['className'] as String?;
     final fieldNames = overrideData['fieldNames'] as Map?;
     final typeMapping = overrideData['typeMapping'] as Map?;
+    final useJsonKey = overrideData['useJsonKey'] as bool?;
 
     final fieldNamesMap = <String, String>{};
     if (fieldNames != null) {
@@ -113,6 +116,7 @@ class ConfigLoader {
       className: className,
       fieldNames: fieldNamesMap.isNotEmpty ? fieldNamesMap : null,
       typeMapping: typeMappingMap.isNotEmpty ? typeMappingMap : null,
+      useJsonKey: useJsonKey,
     );
   }
 }

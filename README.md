@@ -57,6 +57,7 @@ You can create a `dart_swagger_to_models.yaml` file in your project root to conf
 defaultStyle: json_serializable
 outputDir: lib/generated
 projectDir: .
+useJsonKey: true  # Generate @JsonKey for snake_case JSON keys
 
 # Schema-specific overrides
 schemas:
@@ -68,6 +69,7 @@ schemas:
     typeMapping:
       string: MyString
       integer: MyInt
+    useJsonKey: true  # Override global useJsonKey for this schema
 ```
 
 **Priority order**: CLI arguments > config file > defaults
@@ -76,10 +78,12 @@ schemas:
 - `defaultStyle`: default generation style (`plain_dart`, `json_serializable`, `freezed`)
 - `outputDir`: default output directory
 - `projectDir`: default project directory
+- `useJsonKey`: generate `@JsonKey(name: '...')` for fields where JSON key differs from Dart field name (default: `false`)
 - `schemas`: per-schema overrides:
   - `className`: custom class name
   - `fieldNames`: mapping from JSON keys to Dart field names
   - `typeMapping`: mapping from schema types to Dart types
+  - `useJsonKey`: override global `useJsonKey` setting for this schema
 
 ### Example
 

@@ -17,8 +17,9 @@ class PlainDartGenerator extends ClassGeneratorStrategy {
     String className,
     Map<String, FieldInfo> fields,
     String Function(String jsonKey, Map<String, dynamic> schema) fromJsonExpression,
-    String Function(String fieldName, Map<String, dynamic> schema) toJsonExpression,
-  ) {
+    String Function(String fieldName, Map<String, dynamic> schema) toJsonExpression, {
+    bool useJsonKey = false,
+  }) {
     final buffer = StringBuffer()
       ..writeln('class $className {');
 

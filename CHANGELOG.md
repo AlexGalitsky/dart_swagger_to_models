@@ -1,4 +1,13 @@
-## 0.2.2 (Unreleased)
+## 0.3.2 (Unreleased)
+
+### Added
+- `@JsonKey` generation for snake_case JSON keys
+  - Global config option `useJsonKey: true/false`
+  - Per-schema override `useJsonKey` in schema overrides
+  - Works with both `json_serializable` and `freezed` styles
+  - Automatically detects when JSON key differs from Dart field name
+
+## 0.2.2
 
 ### Added
 - Configuration file support (`dart_swagger_to_models.yaml`)

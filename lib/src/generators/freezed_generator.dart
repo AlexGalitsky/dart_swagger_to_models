@@ -21,8 +21,9 @@ class FreezedGenerator extends ClassGeneratorStrategy {
     String className,
     Map<String, FieldInfo> fields,
     String Function(String jsonKey, Map<String, dynamic> schema) fromJsonExpression,
-    String Function(String fieldName, Map<String, dynamic> schema) toJsonExpression,
-  ) {
+    String Function(String fieldName, Map<String, dynamic> schema) toJsonExpression, {
+    bool useJsonKey = false,
+  }) {
     final buffer = StringBuffer()
       ..writeln('@freezed')
       ..writeln('class $className with _\$$className {');
@@ -30,6 +31,10 @@ class FreezedGenerator extends ClassGeneratorStrategy {
     // const factory
     buffer.writeln('  const factory $className({');
     fields.forEach((propName, field) {
+      // Генерируем @JsonKey, если нужно
+      if (useJsonKey && field.needsJsonKey(true)) {
+        buffer.writeln('    @JsonKey(name: \'${field.jsonKey}\')');
+      }
       final prefix = field.isRequired ? 'required ' : '';
       buffer.writeln('    $prefix${field.dartType} ${field.camelCaseName},');
     });

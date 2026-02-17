@@ -11,6 +11,9 @@ class Config {
   /// Корневая директория проекта.
   final String? projectDir;
 
+  /// Использовать @JsonKey для полей с snake_case JSON-ключами.
+  final bool? useJsonKey;
+
   /// Переопределения для отдельных схем.
   final Map<String, SchemaOverride> schemaOverrides;
 
@@ -18,6 +21,7 @@ class Config {
     this.defaultStyle,
     this.outputDir,
     this.projectDir,
+    this.useJsonKey,
     Map<String, SchemaOverride>? schemaOverrides,
   }) : schemaOverrides = schemaOverrides ?? {};
 
@@ -30,6 +34,7 @@ class Config {
       defaultStyle: other.defaultStyle ?? defaultStyle,
       outputDir: other.outputDir ?? outputDir,
       projectDir: other.projectDir ?? projectDir,
+      useJsonKey: other.useJsonKey ?? useJsonKey,
       schemaOverrides: {
         ...schemaOverrides,
         ...other.schemaOverrides,
@@ -49,10 +54,14 @@ class SchemaOverride {
   /// Маппинг типов (JSON тип -> Dart тип).
   final Map<String, String>? typeMapping;
 
+  /// Использовать @JsonKey для полей с snake_case JSON-ключами (переопределяет глобальную опцию).
+  final bool? useJsonKey;
+
   SchemaOverride({
     this.className,
     Map<String, String>? fieldNames,
     Map<String, String>? typeMapping,
+    this.useJsonKey,
   })  : fieldNames = fieldNames ?? {},
         typeMapping = typeMapping ?? {};
 

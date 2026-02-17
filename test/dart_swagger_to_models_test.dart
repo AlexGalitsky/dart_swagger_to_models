@@ -1072,4 +1072,191 @@ outputDir: lib/custom
       expect(content, contains('final User parent;'));
     });
   });
+
+  group('Улучшение ergonomics для json_serializable / freezed', () {
+    test('генерирует @JsonKey для snake_case JSON-ключей в json_serializable', () async {
+      final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_jsonkey_');
+      final configFile = File('${tempDir.path}/dart_swagger_to_models.yaml');
+      final specFile = File('${tempDir.path}/swagger.json');
+
+      await configFile.writeAsString('''
+useJsonKey: true
+''');
+
+      final spec = <String, dynamic>{
+        'swagger': '2.0',
+        'info': {'title': 'Test', 'version': '1.0.0'},
+        'paths': <String, dynamic>{},
+        'definitions': <String, dynamic>{
+          'User': {
+            'type': 'object',
+            'properties': {
+              'user_id': {'type': 'integer'},
+              'user_name': {'type': 'string'},
+              'email': {'type': 'string'}, // camelCase - не нужен @JsonKey
+            },
+          },
+        },
+      };
+
+      await specFile.writeAsString(jsonEncode(spec));
+
+      final result = await SwaggerToDartGenerator.generateModels(
+        input: specFile.path,
+        outputDir: '${tempDir.path}/models',
+        projectDir: tempDir.path,
+        style: GenerationStyle.jsonSerializable,
+        config: await ConfigLoader.loadConfig(null, tempDir.path),
+      );
+
+      final userFile = result.generatedFiles.firstWhere((f) => f.contains('user.dart'));
+      final content = await File(userFile).readAsString();
+      // Проверяем, что для snake_case полей есть @JsonKey
+      expect(content, contains("@JsonKey(name: 'user_id')"));
+      expect(content, contains("@JsonKey(name: 'user_name')"));
+      // Для camelCase полей @JsonKey не нужен
+      expect(content, isNot(contains("@JsonKey(name: 'email')")));
+      expect(content, contains('final int userId;'));
+      expect(content, contains('final String userName;'));
+      expect(content, contains('final String email;'));
+    });
+
+    test('генерирует @JsonKey для snake_case JSON-ключей в freezed', () async {
+      final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_jsonkey_freezed_');
+      final configFile = File('${tempDir.path}/dart_swagger_to_models.yaml');
+      final specFile = File('${tempDir.path}/swagger.json');
+
+      await configFile.writeAsString('''
+useJsonKey: true
+''');
+
+      final spec = <String, dynamic>{
+        'swagger': '2.0',
+        'info': {'title': 'Test', 'version': '1.0.0'},
+        'paths': <String, dynamic>{},
+        'definitions': <String, dynamic>{
+          'User': {
+            'type': 'object',
+            'properties': {
+              'user_id': {'type': 'integer'},
+              'user_name': {'type': 'string'},
+            },
+          },
+        },
+      };
+
+      await specFile.writeAsString(jsonEncode(spec));
+
+      final result = await SwaggerToDartGenerator.generateModels(
+        input: specFile.path,
+        outputDir: '${tempDir.path}/models',
+        projectDir: tempDir.path,
+        style: GenerationStyle.freezed,
+        config: await ConfigLoader.loadConfig(null, tempDir.path),
+      );
+
+      final userFile = result.generatedFiles.firstWhere((f) => f.contains('user.dart'));
+      final content = await File(userFile).readAsString();
+      // Проверяем, что для snake_case полей есть @JsonKey в const factory
+      expect(content, contains("@JsonKey(name: 'user_id')"));
+      expect(content, contains("@JsonKey(name: 'user_name')"));
+      expect(content, contains('required int userId,'));
+      expect(content, contains('required String userName,'));
+    });
+
+    test('не генерирует @JsonKey, если useJsonKey: false', () async {
+      final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_no_jsonkey_');
+      final configFile = File('${tempDir.path}/dart_swagger_to_models.yaml');
+      final specFile = File('${tempDir.path}/swagger.json');
+
+      await configFile.writeAsString('''
+useJsonKey: false
+''');
+
+      final spec = <String, dynamic>{
+        'swagger': '2.0',
+        'info': {'title': 'Test', 'version': '1.0.0'},
+        'paths': <String, dynamic>{},
+        'definitions': <String, dynamic>{
+          'User': {
+            'type': 'object',
+            'properties': {
+              'user_id': {'type': 'integer'},
+            },
+          },
+        },
+      };
+
+      await specFile.writeAsString(jsonEncode(spec));
+
+      final result = await SwaggerToDartGenerator.generateModels(
+        input: specFile.path,
+        outputDir: '${tempDir.path}/models',
+        projectDir: tempDir.path,
+        style: GenerationStyle.jsonSerializable,
+        config: await ConfigLoader.loadConfig(null, tempDir.path),
+      );
+
+      final userFile = result.generatedFiles.firstWhere((f) => f.contains('user.dart'));
+      final content = await File(userFile).readAsString();
+      // @JsonKey не должен генерироваться
+      expect(content, isNot(contains("@JsonKey(name: 'user_id')")));
+      expect(content, contains('final int userId;'));
+    });
+
+    test('переопределение useJsonKey на уровне схемы', () async {
+      final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_jsonkey_override_');
+      final configFile = File('${tempDir.path}/dart_swagger_to_models.yaml');
+      final specFile = File('${tempDir.path}/swagger.json');
+
+      await configFile.writeAsString('''
+useJsonKey: false
+schemas:
+  User:
+    useJsonKey: true
+''');
+
+      final spec = <String, dynamic>{
+        'swagger': '2.0',
+        'info': {'title': 'Test', 'version': '1.0.0'},
+        'paths': <String, dynamic>{},
+        'definitions': <String, dynamic>{
+          'User': {
+            'type': 'object',
+            'properties': {
+              'user_id': {'type': 'integer'},
+            },
+          },
+          'Order': {
+            'type': 'object',
+            'properties': {
+              'order_id': {'type': 'integer'},
+            },
+          },
+        },
+      };
+
+      await specFile.writeAsString(jsonEncode(spec));
+
+      final result = await SwaggerToDartGenerator.generateModels(
+        input: specFile.path,
+        outputDir: '${tempDir.path}/models',
+        projectDir: tempDir.path,
+        style: GenerationStyle.jsonSerializable,
+        config: await ConfigLoader.loadConfig(null, tempDir.path),
+      );
+
+      final userFile = result.generatedFiles.firstWhere((f) => f.contains('user.dart'));
+      final orderFile = result.generatedFiles.firstWhere((f) => f.contains('order.dart'));
+      
+      final userContent = await File(userFile).readAsString();
+      final orderContent = await File(orderFile).readAsString();
+      
+      // User должен иметь @JsonKey (переопределение на уровне схемы)
+      expect(userContent, contains("@JsonKey(name: 'user_id')"));
+      
+      // Order не должен иметь @JsonKey (глобальная опция false)
+      expect(orderContent, isNot(contains("@JsonKey(name: 'order_id')")));
+    });
+  });
 }

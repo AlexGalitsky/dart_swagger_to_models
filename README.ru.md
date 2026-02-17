@@ -57,6 +57,7 @@ dart run dart_swagger_to_models:dart_swagger_to_models \
 defaultStyle: json_serializable
 outputDir: lib/generated
 projectDir: .
+useJsonKey: true  # Генерировать @JsonKey для snake_case JSON-ключей
 
 # Переопределения для отдельных схем
 schemas:
@@ -68,6 +69,7 @@ schemas:
     typeMapping:
       string: MyString
       integer: MyInt
+    useJsonKey: true  # Переопределить глобальную опцию useJsonKey для этой схемы
 ```
 
 **Приоритет**: аргументы CLI > конфигурационный файл > значения по умолчанию
@@ -76,10 +78,12 @@ schemas:
 - `defaultStyle`: стиль генерации по умолчанию (`plain_dart`, `json_serializable`, `freezed`)
 - `outputDir`: директория для выходных файлов по умолчанию
 - `projectDir`: корневая директория проекта по умолчанию
+- `useJsonKey`: генерировать `@JsonKey(name: '...')` для полей, где JSON-ключ отличается от Dart имени поля (по умолчанию: `false`)
 - `schemas`: переопределения для отдельных схем:
   - `className`: кастомное имя класса
   - `fieldNames`: маппинг JSON ключей на Dart имена полей
   - `typeMapping`: маппинг типов схемы на Dart типы
+  - `useJsonKey`: переопределить глобальную опцию `useJsonKey` для этой схемы
 
 ### Пример результата
 
