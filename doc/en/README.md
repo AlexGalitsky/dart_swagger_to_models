@@ -18,6 +18,15 @@ This document gives a high-level overview. For a full usage guide see `USAGE.md`
 - **Pluggable styles** via `StyleRegistry`
 - **build_runner integration** for automatic generation
 
+#### Advanced OpenAPI composition
+
+- `allOf`:
+  - Merge properties from multiple schemas (including nested `allOf` and multiple inheritance).
+  - Detect and log circular dependencies.
+- `oneOf` / `anyOf`:
+  - Safe `dynamic` wrappers for generic unions.
+  - Discriminator-aware union-style classes when a discriminator+enum pattern is detected (see `doc/en/USAGE.md#9-openapi-composition-schemas-allof-oneof-anyof` and `doc/en/UNION_TYPES_NOTES.md` for details).
+
 ---
 
 ### Quick CLI examples

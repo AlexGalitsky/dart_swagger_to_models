@@ -1080,8 +1080,8 @@ class SwaggerToDartGenerator {
 
   /// Generates class for oneOf/anyOf schema.
   ///
-  /// For oneOf/anyOf a safe wrapper with dynamic value is generated.
-  /// In the future, union types can be generated here, especially with discriminator.
+  /// - For oneOf/anyOf **with discriminator.mapping** a type-safe union class is generated.
+  /// - For other oneOf/anyOf schemas a safe wrapper with `dynamic` value is generated.
   static String _generateOneOfClass(
     String name,
     Map<String, dynamic> schema,
@@ -1094,10 +1094,11 @@ class SwaggerToDartGenerator {
     final hasOneOf = oneOf != null && oneOf.isNotEmpty;
     final hasAnyOf = anyOf != null && anyOf.isNotEmpty;
 
-    // Determine types for logging
+    // Determine possible types (for logging and discriminator mapping)
     final possibleTypes = <String>[];
-    if (hasOneOf) {
-      for (final item in oneOf) {
+    void collectPossibleTypes(List<dynamic>? items) {
+      if (items == null) return;
+      for (final item in items) {
         if (item is Map<String, dynamic>) {
           final ref = item[r'$ref'] as String?;
           if (ref != null) {
@@ -1112,36 +1113,267 @@ class SwaggerToDartGenerator {
         }
       }
     }
-    if (hasAnyOf) {
-      for (final item in anyOf) {
-        if (item is Map<String, dynamic>) {
-          final ref = item[r'$ref'] as String?;
-          if (ref != null) {
-            final refName = ref.split('/').last;
-            possibleTypes.add(refName);
-          } else {
-            final type = item['type'] as String?;
-            if (type != null) {
-              possibleTypes.add(type);
-            }
-          }
-        }
-      }
-    }
+    if (hasOneOf) collectPossibleTypes(oneOf);
+    if (hasAnyOf) collectPossibleTypes(anyOf);
 
-    // Check for discriminator (for future union type support)
+    // Check for discriminator (required for union generation)
     final discriminator = schema['discriminator'] as Map<String, dynamic>?;
-    final hasDiscriminator = discriminator != null;
+    final discriminatorProperty =
+        discriminator != null ? discriminator['propertyName'] as String? : null;
+    final discriminatorMappingRaw =
+        discriminator != null ? discriminator['mapping'] : null;
+    final discriminatorMapping =
+        discriminatorMappingRaw is Map<String, dynamic>
+            ? discriminatorMappingRaw
+            : null;
 
-    if (hasDiscriminator) {
-      final propertyName = discriminator['propertyName'] as String? ?? 'type';
-      Logger.verbose(
-        'Schema "$name" uses discriminator "$propertyName" for oneOf/anyOf. '
-        'Union type generation support will be added in future versions.',
-      );
+    // Build potential union variants when discriminator is present.
+    // We support two cases:
+    // - Explicit discriminator.mapping (token -> ref)
+    // - No mapping, but each referenced schema has a discriminator property with single-valued enum.
+    final variants = <Map<String, String>>[]; // {token, ref, typeName}
+
+    if (discriminatorProperty != null) {
+      if (discriminatorMapping != null) {
+        discriminatorMapping.forEach((token, refValue) {
+          if (refValue is String) {
+            final refName = refValue.split('/').last;
+            final typeName = _toPascalCase(refName);
+            variants.add({
+              'token': token,
+              'ref': refValue,
+              'typeName': typeName,
+            });
+          }
+        });
+      } else {
+        // Infer mapping from referenced schemas using enum on discriminator property.
+        final items = hasOneOf
+            ? oneOf
+            : hasAnyOf
+                ? anyOf
+                : null;
+        if (items != null) {
+          for (final item in items) {
+            if (item is! Map<String, dynamic>) continue;
+            final ref = item[r'$ref'] as String?;
+            if (ref == null) continue;
+
+            final refSchema = context.resolveRef(ref, context: name);
+            if (refSchema is! Map<String, dynamic>) continue;
+
+            final props =
+                refSchema['properties'] as Map<String, dynamic>? ?? {};
+            final discProp = props[discriminatorProperty];
+            if (discProp is! Map<String, dynamic>) continue;
+
+            final enumValues = discProp['enum'] as List?;
+            if (enumValues == null ||
+                enumValues.length != 1 ||
+                enumValues.first is! String) {
+              continue;
+            }
+
+            final token = enumValues.first as String;
+            final refName = ref.split('/').last;
+            final typeName = _toPascalCase(refName);
+            variants.add({
+              'token': token,
+              'ref': ref,
+              'typeName': typeName,
+            });
+          }
+        }
+      }
     }
 
-    // Log information about possible types
+    final hasDiscriminatorUnion =
+        discriminatorProperty != null && variants.isNotEmpty;
+
+    if (hasDiscriminatorUnion) {
+      Logger.verbose(
+        'Schema "$name" uses discriminator "$discriminatorProperty" for oneOf/anyOf. '
+        'Generating union type with ${variants.length} variants.',
+      );
+
+      if (variants.isEmpty) {
+        Logger.warning(
+          'Schema "$name" has discriminator.mapping but no usable variants were detected. '
+          'Falling back to dynamic wrapper.',
+        );
+      } else {
+        // Generate union class
+        final buffer = StringBuffer()
+          ..writeln(
+              '/// Union type for ${hasOneOf ? 'oneOf' : 'anyOf'} schema "$name" with discriminator.')
+          ..writeln('class $className {')
+          ..writeln(
+              '  /// Discriminator value that identifies the concrete type.') // non-nullable
+          ..writeln('  final String $discriminatorProperty;')
+          ..writeln();
+
+        // Variant fields
+        for (final v in variants) {
+          final typeName = v['typeName']!;
+          final fieldName =
+              _toCamelCase(typeName); // helper: Cat -> cat, MyPet -> myPet
+          buffer
+            ..writeln('  /// Value when this union holds `$typeName`.')
+            ..writeln('  final $typeName? $fieldName;')
+            ..writeln();
+        }
+
+        // Private constructor
+        buffer.writeln('  const $className._({');
+        buffer.writeln('    required this.$discriminatorProperty,');
+        for (final v in variants) {
+          final typeName = v['typeName']!;
+          final fieldName = _toCamelCase(typeName);
+          buffer.writeln('    this.$fieldName,');
+        }
+        buffer.writeln('  })');
+        buffer.writeln('      : ');
+        for (var i = 0; i < variants.length; i++) {
+          final v = variants[i];
+          final typeName = v['typeName']!;
+          final fieldName = _toCamelCase(typeName);
+          final isLast = i == variants.length - 1;
+          buffer.writeln('          $fieldName = $fieldName${isLast ? ';' : ','}');
+        }
+        buffer.writeln();
+
+        // Named constructors for each variant
+        for (final v in variants) {
+          final token = v['token']!;
+          final typeName = v['typeName']!;
+          final fieldName = _toCamelCase(typeName);
+          buffer
+            ..writeln('  factory $className.from$typeName($typeName value) {')
+            ..writeln('    return $className._(')
+            ..writeln("      $discriminatorProperty: '$token',")
+            ..writeln('      ${fieldName}: value,')
+            ..writeln('    );')
+            ..writeln('  }')
+            ..writeln();
+        }
+
+        // fromJson using discriminator
+        buffer
+          ..writeln(
+              '  /// Creates [$className] from JSON using discriminator `$discriminatorProperty`.')
+          ..writeln(
+              '  factory $className.fromJson(Map<String, dynamic> json) {')
+          ..writeln(
+              "    final disc = json['$discriminatorProperty'] as String?;")
+          ..writeln('    if (disc == null) {')
+          ..writeln(
+              "      throw ArgumentError('Missing discriminator \"$discriminatorProperty\" for $className');")
+          ..writeln('    }')
+          ..writeln('    switch (disc) {');
+
+        for (final v in variants) {
+          final token = v['token']!;
+          final typeName = v['typeName']!;
+          buffer
+            ..writeln("      case '$token':")
+            ..writeln(
+                '        return $className.from$typeName($typeName.fromJson(json));');
+        }
+
+        buffer
+          ..writeln('      default:')
+          ..writeln(
+              "        throw ArgumentError('Unknown discriminator value \"\$disc\" for $className');")
+          ..writeln('    }')
+          ..writeln('  }')
+          ..writeln();
+
+        // toJson delegates to active variant
+        buffer
+          ..writeln('  /// Serializes this union back to JSON.')
+          ..writeln('  Map<String, dynamic> toJson() {')
+          ..writeln('    switch ($discriminatorProperty) {');
+        for (final v in variants) {
+          final token = v['token']!;
+          final typeName = v['typeName']!;
+          final fieldName = _toCamelCase(typeName);
+          buffer
+            ..writeln("      case '$token':")
+            ..writeln('        return $fieldName!.toJson();');
+        }
+        buffer
+          ..writeln('      default:')
+          ..writeln(
+              "        throw StateError('Unknown discriminator value \"\$$discriminatorProperty\" for $className');")
+          ..writeln('    }')
+          ..writeln('  }')
+          ..writeln();
+
+        // when helper for pattern matching
+        buffer
+          ..writeln('  /// Pattern matching helper for union values.')
+          ..writeln('  T when<T>({')
+          ..writeln(
+              variants.map((v) => '    required T Function(${v['typeName']} value) ${_toCamelCase(v['typeName']!)}').join(',\n'))
+          ..writeln('  }) {')
+          ..writeln('    switch ($discriminatorProperty) {');
+        for (final v in variants) {
+          final token = v['token']!;
+          final typeName = v['typeName']!;
+          final fieldName = _toCamelCase(typeName);
+          buffer
+            ..writeln("      case '$token':")
+            ..writeln('        return ${fieldName}(${fieldName}!);');
+        }
+        buffer
+          ..writeln('      default:')
+          ..writeln(
+              "        throw StateError('Unknown discriminator value \"\$$discriminatorProperty\" for $className');")
+          ..writeln('    }')
+          ..writeln('  }')
+          ..writeln();
+
+        // maybeWhen helper
+        buffer
+          ..writeln('  /// Nullable pattern matching helper for union values.')
+          ..writeln('  T? maybeWhen<T>({')
+          ..writeln(
+              variants.map((v) => '    T Function(${v['typeName']} value)? ${_toCamelCase(v['typeName']!)}').join(',\n'))
+          ..writeln('    T Function()? orElse,')
+          ..writeln('  }) {')
+          ..writeln('    switch ($discriminatorProperty) {');
+        for (final v in variants) {
+          final token = v['token']!;
+          final typeName = v['typeName']!;
+          final fieldName = _toCamelCase(typeName);
+          buffer
+            ..writeln("      case '$token':")
+            ..writeln('        final handler = ${fieldName};')
+            ..writeln('        if (handler != null) {')
+            ..writeln('          return handler(${fieldName}!);')
+            ..writeln('        }')
+            ..writeln('        break;');
+        }
+        buffer
+          ..writeln('      default:')
+          ..writeln('        break;')
+          ..writeln('    }')
+          ..writeln('    return orElse != null ? orElse() : null;')
+          ..writeln('  }')
+          ..writeln();
+
+        buffer
+          ..writeln('  @override')
+          ..writeln(
+              "  String toString() => '$className(\$discriminatorProperty: \$$discriminatorProperty)';")
+          ..writeln('}');
+
+        return buffer.toString();
+      }
+    }
+
+    // If we get here, either there is no discriminator mapping or it was unusable.
+    // Fallback to dynamic wrapper.
     if (possibleTypes.isNotEmpty) {
       final typesStr = possibleTypes.join(', ');
       Logger.verbose(
@@ -1155,14 +1387,11 @@ class SwaggerToDartGenerator {
       );
     }
 
-    // Generate safe wrapper
     final buffer = StringBuffer()
       ..writeln('/// Class for ${hasOneOf ? 'oneOf' : 'anyOf'} schema "$name".')
       ..writeln('///')
       ..writeln(
-          '/// Note: For ${hasOneOf ? 'oneOf' : 'anyOf'} schemas, a wrapper with dynamic value is generated.')
-      ..writeln(
-          '/// Union type generation support will be added in future versions.');
+          '/// Note: For this schema, a wrapper with dynamic value is generated.');
     if (possibleTypes.isNotEmpty) {
       buffer.writeln('/// Possible types: ${possibleTypes.join(', ')}.');
     }
@@ -1176,7 +1405,7 @@ class SwaggerToDartGenerator {
       ..writeln('  /// Creates instance from JSON.')
       ..writeln('  ///')
       ..writeln(
-          '  /// Note: For ${hasOneOf ? 'oneOf' : 'anyOf'} schemas, manual type validation is required.')
+          '  /// Note: For this schema, manual type validation is required.')
       ..writeln('  factory $className.fromJson(dynamic json) {')
       ..writeln('    if (json == null) {')
       ..writeln(
@@ -1468,6 +1697,13 @@ class SwaggerToDartGenerator {
       return 'Unknown';
     }
     return parts.map((p) => p[0].toUpperCase() + p.substring(1)).join();
+  }
+
+  /// Converts type name to lowerCamelCase for field/parameter names.
+  static String _toCamelCase(String name) {
+    if (name.isEmpty) return name;
+    if (name.length == 1) return name.toLowerCase();
+    return name[0].toLowerCase() + name.substring(1);
   }
 
   /// Checks schemas for suspicious constructs.

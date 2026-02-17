@@ -23,7 +23,7 @@ Generate type-safe, null-safe Dart models from your OpenAPI/Swagger specificatio
 - 🏗️ **build_runner integration** - Automatic generation as part of your build pipeline
 - 🔍 **Spec linting** - Validate your OpenAPI/Swagger specifications
 - 🧩 **Pluggable styles** - Register custom generation styles via `StyleRegistry`
-- 📦 **OpenAPI 3.0 & Swagger 2.0** - Full support for both specification formats
+- 📦 **OpenAPI 3.0 & Swagger 2.0** - Full support for both specification formats, including `allOf` inheritance and `oneOf`/`anyOf` union wrappers (with discriminator-aware unions)
 
 ## 🚀 Quick Start
 

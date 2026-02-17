@@ -93,6 +93,7 @@ dart_swagger_to_models — Дорожная карта
   - Поддержка свойства `discriminator` для различения типов
   - Генерация sealed классов или freezed unions
   - Type-safe pattern matching для union типов
+- Зафиксировать архитектурные решения и компромиссы в `doc/en/UNION_TYPES_NOTES.md`
 - Конфигурация:
   - Опция выбора реализации union типов (sealed classes vs freezed unions)
   - Поддержка кастомных маппингов discriminator

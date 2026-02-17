@@ -135,7 +135,7 @@ void main() {
       expect(content, contains('final num price;'));
     });
 
-    test('generates safe wrapper for oneOf', () async {
+    test('generates safe wrapper for oneOf without discriminator', () async {
       final tempDir = await Directory.systemTemp
           .createTemp('dart_swagger_to_models_oneof_');
       final specFile = File('${tempDir.path}/openapi.json');
@@ -206,7 +206,7 @@ void main() {
           isFalse);
     });
 
-    test('generates safe wrapper for anyOf', () async {
+    test('generates safe wrapper for anyOf without discriminator', () async {
       final tempDir = await Directory.systemTemp
           .createTemp('dart_swagger_to_models_anyof_');
       final specFile = File('${tempDir.path}/openapi.json');
@@ -251,7 +251,7 @@ void main() {
       expect(content, contains('factory Error.fromJson(dynamic json)'));
     });
 
-    test('handles oneOf with discriminator and logs information', () async {
+    test('generates union type for oneOf with discriminator', () async {
       final tempDir = await Directory.systemTemp
           .createTemp('dart_swagger_to_models_oneof_discriminator_');
       final specFile = File('${tempDir.path}/openapi.json');
@@ -297,7 +297,6 @@ void main() {
 
       await specFile.writeAsString(jsonEncode(spec));
 
-      Logger.clear();
       final result = await SwaggerToDartGenerator.generateModels(
         input: specFile.path,
         outputDir: '${tempDir.path}/models',
@@ -307,7 +306,18 @@ void main() {
       final petFile =
           result.generatedFiles.firstWhere((f) => f.contains('pet.dart'));
       final content = await File(petFile).readAsString();
+
+      // Should generate union-style class with discriminator-based union
       expect(content, contains('class Pet'));
+      expect(content, contains('final String type;'));
+      expect(content, contains('final Cat? cat;'));
+      expect(content, contains('final Dog? dog;'));
+      expect(content, contains('const Pet._({'));
+      expect(content, contains('factory Pet.fromCat(Cat value)'));
+      expect(content, contains('factory Pet.fromDog(Dog value)'));
+      expect(content, contains('factory Pet.fromJson(Map<String, dynamic> json)'));
+      expect(content, contains('Map<String, dynamic> toJson()'));
+      expect(content, contains('T when<T>({'));
     });
 
     test('handles circular dependencies in allOf', () async {

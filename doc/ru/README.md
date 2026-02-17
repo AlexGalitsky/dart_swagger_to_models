@@ -70,6 +70,15 @@ dart run dart_swagger_to_models:dart_swagger_to_models \
   `/*SWAGGER-TO-DART: Codegen stop*/` код может безопасно перегенерироваться,
   остальной код (импорты, методы, расширения) сохраняется.
 
+### Расширенные возможности OpenAPI-композиции
+
+- `allOf`:
+  - Объединение свойств из нескольких схем (включая вложенные `allOf` и множественное наследование).
+  - Обнаружение и логирование циклических зависимостей.
+- `oneOf` / `anyOf`:
+  - Безопасные обёртки с `dynamic` для общих случаев.
+  - Discriminator-aware union-классы при обнаружении паттерна discriminator+enum (см. `doc/en/USAGE.md#9-openapi-composition-schemas-allof-oneof-anyof` и `doc/en/UNION_TYPES_NOTES.md` для деталей).
+
 Более подробные примеры и описание смотрите в:
 - `doc/en/USAGE.md` — основная документация (EN),
 - `doc/ru/USAGE.md` — подробное русскоязычное руководство по использованию.

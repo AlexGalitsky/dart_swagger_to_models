@@ -35,7 +35,9 @@
   - Собирает зависимости для генерации импортов (`_collectDependencies`, `_generateImportsForDependencies`).
   - Обрабатывает схемы композиции OpenAPI:
     - `_generateAllOfClass` — рекурсивная обработка вложенных комбинаций `allOf`, множественное наследование, обнаружение циклических зависимостей.
-    - `_generateOneOfClass` — безопасные обёртки с `dynamic` для `oneOf`/`anyOf` с обнаружением и логированием discriminator.
+    - `_generateOneOfClass` —
+      - безопасные обёртки с `dynamic` для обычных `oneOf`/`anyOf` (без discriminator),
+      - discriminator-aware union-классы (один класс с полем discriminator, nullable-полями для вариантов и helper-методами `when`/`maybeWhen`) при обнаружении паттерна discriminator+enum.
   - Поддерживает инкрементальную генерацию:
     - Класс `GenerationCache` для кэширования хешей схем в `.dart_swagger_to_models.cache`
     - CLI флаг `--changed-only` для регенерации только изменённых схем

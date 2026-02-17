@@ -320,7 +320,12 @@ The generated `User` class will contain all properties from `BaseEntity` plus it
 
 #### `oneOf` / `anyOf` (union-like types)
 
-For `oneOf` and `anyOf` schemas, the generator currently creates a safe wrapper with a `dynamic` value:
+The generator supports `oneOf` / `anyOf` in two modes:
+
+- **Without discriminator** — safe wrapper with `dynamic` value.
+- **With discriminator and per-variant enums** — union-style class with discriminator and typed variants.
+
+##### 9.1 oneOf/anyOf without discriminator (dynamic wrapper)
 
 ```yaml
 components:
@@ -349,7 +354,6 @@ The generated `Value` class will be:
 /// Class for oneOf schema "Value".
 ///
 /// Note: For oneOf schemas a wrapper with dynamic is generated.
-/// Future versions will support proper union types.
 /// Possible types: StringValue, NumberValue.
 class Value {
   /// Value (can be one of the possible types).
@@ -377,12 +381,126 @@ class Value {
 
 **Capabilities:**
 
-- Safe `dynamic` wrappers with clear error messages
-- Detection and logging of `discriminator` usage (architecture prepared for future union-type generation)
-- Detailed logging of possible types in `oneOf`/`anyOf` schemas (use `--verbose`)
-- Explanatory comments in generated docs about current limitations
+- Safe `dynamic` wrappers with clear error messages.
+- Detection and logging of possible types in `oneOf`/`anyOf` schemas (use `--verbose`).
 
-> **Note:** Full union-type generation (especially with `discriminator`) is planned for future versions. Currently, `oneOf`/`anyOf` schemas generate safe wrappers that require manual type validation.
+##### 9.2 oneOf/anyOf with discriminator (union-style class)
+
+If a schema uses `discriminator` and each referenced variant schema defines that discriminator property
+as an enum with a single literal (e.g. `'cat'`, `'dog'`), the generator creates a union-style class:
+
+```yaml
+components:
+  schemas:
+    Cat:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: ['cat']
+        meow:
+          type: boolean
+
+    Dog:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: ['dog']
+        bark:
+          type: boolean
+
+    Pet:
+      oneOf:
+        - $ref: '#/components/schemas/Cat'
+        - $ref: '#/components/schemas/Dog'
+      discriminator:
+        propertyName: type
+```
+
+The generated `Pet` union class will look roughly like:
+
+```dart
+class Pet {
+  final String type;
+
+  /// Value when this union holds `Cat`.
+  final Cat? cat;
+
+  /// Value when this union holds `Dog`.
+  final Dog? dog;
+
+  const Pet._({
+    required this.type,
+    this.cat,
+    this.dog,
+  })  : cat = cat,
+        dog = dog;
+
+  factory Pet.fromCat(Cat value) {
+    return Pet._(
+      type: 'cat',
+      cat: value,
+    );
+  }
+
+  factory Pet.fromDog(Dog value) {
+    return Pet._(
+      type: 'dog',
+      dog: value,
+    );
+  }
+
+  factory Pet.fromJson(Map<String, dynamic> json) {
+    final disc = json['type'] as String?;
+    if (disc == null) {
+      throw ArgumentError('Missing discriminator "type" for Pet');
+    }
+    switch (disc) {
+      case 'cat':
+        return Pet.fromCat(Cat.fromJson(json));
+      case 'dog':
+        return Pet.fromDog(Dog.fromJson(json));
+      default:
+        throw ArgumentError('Unknown discriminator value "$disc" for Pet');
+    }
+  }
+
+  Map<String, dynamic> toJson() {
+    switch (type) {
+      case 'cat':
+        return cat!.toJson();
+      case 'dog':
+        return dog!.toJson();
+      default:
+        throw StateError('Unknown discriminator value "$type" for Pet');
+    }
+  }
+
+  /// Pattern matching helper for union values.
+  T when<T>({
+    required T Function(Cat value) cat,
+    required T Function(Dog value) dog,
+  }) {
+    switch (type) {
+      case 'cat':
+        return cat(this.cat!);
+      case 'dog':
+        return dog(this.dog!);
+      default:
+        throw StateError('Unknown discriminator value "$type" for Pet');
+    }
+  }
+}
+```
+
+**Capabilities (with discriminator):**
+
+- Type-safe JSON deserialization based on discriminator.
+- Union-style class with one nullable field per variant.
+- `when`/`maybeWhen` helpers for ergonomic pattern matching.
+
+For more details and design trade-offs, see `doc/en/UNION_TYPES_NOTES.md`.
 
 ---
 

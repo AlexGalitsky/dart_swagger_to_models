@@ -93,6 +93,7 @@ dart_swagger_to_models — Roadmap
   - Support `discriminator` property for type discrimination
   - Generate sealed classes or freezed unions
   - Type-safe pattern matching for union types
+- Track design decisions and trade-offs in `doc/en/UNION_TYPES_NOTES.md`
 - Configuration:
   - Option to choose union type implementation (sealed classes vs freezed unions)
   - Support for custom discriminator mappings

@@ -31,7 +31,9 @@ the project context.
   - Collects dependencies for import generation (`_collectDependencies`, `_generateImportsForDependencies`).
   - Handles OpenAPI composition schemas:
     - `_generateAllOfClass` — recursive handling of nested `allOf` combinations, multiple inheritance, circular dependency detection.
-    - `_generateOneOfClass` — safe `dynamic` wrappers for `oneOf`/`anyOf` with discriminator detection and logging.
+    - `_generateOneOfClass` — 
+      - safe `dynamic` wrappers for plain `oneOf`/`anyOf` (without discriminator),
+      - discriminator-aware union-style classes (single class with discriminator field, nullable variant fields, `when`/`maybeWhen` helpers) when discriminator+enum pattern is detected.
   - Supports incremental generation:
     - `GenerationCache` class for caching schema hashes in `.dart_swagger_to_models.cache`
     - `--changed-only` CLI flag to regenerate only changed schemas
