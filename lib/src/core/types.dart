@@ -62,7 +62,6 @@ class GenerationContext {
           return result;
         } else {
           // Схема не найдена - логируем предупреждение
-          final contextMsg = context != null ? ' (в схеме "$context")' : '';
           // Импортируем Logger только здесь, чтобы избежать циклических зависимостей
           // Используем динамический импорт через строку
           return null;

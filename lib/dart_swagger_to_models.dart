@@ -13,9 +13,9 @@ import 'src/core/types.dart';
 import 'src/generators/class_generator_strategy.dart';
 import 'src/generators/generator_factory.dart';
 
+export 'src/config/config.dart' show Config, SchemaOverride;
 export 'src/core/types.dart'
     show SpecVersion, GenerationStyle, GenerationResult, GenerationContext;
-export 'src/config/config.dart' show Config, SchemaOverride;
 export 'src/generators/class_generator_strategy.dart' show ClassGeneratorStrategy, FieldInfo;
 export 'src/generators/style_registry.dart' show StyleRegistry;
 // Builder экспортируется отдельно, чтобы избежать загрузки dart:mirrors при обычном использовании
@@ -142,9 +142,9 @@ class SwaggerToDartGenerator {
   static Future<GenerationResult> _generateModelsPerFile({
     required Map<String, dynamic> schemas,
     required GenerationContext context,
-    GenerationStyle? style,
     required String outputDir,
     required String projectDir,
+    GenerationStyle? style,
     Config? config,
     bool changedOnly = false,
   }) async {
@@ -170,7 +170,9 @@ class SwaggerToDartGenerator {
     if (changedOnly && cache != null) {
       // Определяем, какие схемы изменились
       for (final entry in schemas.entries) {
-        final schemaMap = (entry.value ?? {}) as Map<String, dynamic>;
+        final schemaMap = <String, dynamic>{
+          ...?entry.value as Map<String, dynamic>?,
+        };
         if (cache.hasChanged(entry.key, schemaMap)) {
           schemasToProcess[entry.key] = schemaMap;
           Logger.verbose('Схема "${entry.key}" изменилась, будет перегенерирована');
@@ -200,7 +202,12 @@ class SwaggerToDartGenerator {
       }
     } else {
       // Режим полной генерации
-      schemasToProcess.addAll(schemas.map((k, v) => MapEntry(k, (v ?? {}) as Map<String, dynamic>)));
+      schemasToProcess.addAll(schemas.map((k, v) => MapEntry(
+            k,
+            <String, dynamic>{
+              ...?v as Map<String, dynamic>?,
+            },
+          )));
     }
 
     // Сканируем проект для поиска существующих файлов с маркерами
@@ -218,7 +225,9 @@ class SwaggerToDartGenerator {
     // Сначала генерируем enum'ы
     final enumSchemas = <String, Map<String, dynamic>>{};
     schemasToProcess.forEach((name, schema) {
-      final schemaMap = (schema ?? {}) as Map<String, dynamic>;
+      final schemaMap = <String, dynamic>{
+        ...?schema as Map<String, dynamic>?,
+      };
       if (context.isEnum(schemaMap)) {
         enumSchemas[name] = schemaMap;
       }
@@ -282,12 +291,19 @@ class SwaggerToDartGenerator {
 
     // Затем генерируем классы в отдельные файлы
     final classSchemas = schemasToProcess.entries
-        .where((e) => !context.isEnum((e.value ?? {}) as Map<String, dynamic>))
+        .where((e) {
+          final schemaMap = <String, dynamic>{
+            ...?e.value as Map<String, dynamic>?,
+          };
+          return !context.isEnum(schemaMap);
+        })
         .length;
     Logger.verbose('Найдено схем классов: $classSchemas');
 
     for (final entry in schemasToProcess.entries) {
-      final schemaMap = (entry.value ?? {}) as Map<String, dynamic>;
+      final schemaMap = <String, dynamic>{
+        ...?entry.value as Map<String, dynamic>?,
+      };
       if (!context.isEnum(schemaMap)) {
         try {
           final override = config?.schemaOverrides[entry.key];
@@ -346,7 +362,9 @@ class SwaggerToDartGenerator {
     // Обновляем кэш для всех схем (даже не изменённых, если changedOnly = false)
     if (cache != null && !changedOnly) {
       for (final entry in schemas.entries) {
-        final schemaMap = (entry.value ?? {}) as Map<String, dynamic>;
+        final schemaMap = <String, dynamic>{
+          ...?entry.value as Map<String, dynamic>?,
+        };
         final hash = GenerationCache.computeSchemaHash(schemaMap);
         cache.setHash(entry.key, hash);
       }
@@ -748,7 +766,7 @@ class SwaggerToDartGenerator {
       final value = enumValues[i];
       String enumValue;
       
-      if (hasCustomNames && enumNames![i] is String) {
+      if (hasCustomNames && enumNames[i] is String) {
         // Используем кастомное имя из x-enumNames / x-enum-varnames
         enumValue = _toEnumValueName(enumNames[i] as String);
       } else if (value is String) {
@@ -848,7 +866,9 @@ class SwaggerToDartGenerator {
         final valueExpr = _fromJsonExpression('v', additionalProps, context, isRequired: true);
         classBuffer.writeln('      data: json.map((k, v) => MapEntry(k, $valueExpr)),');
       } else {
-        classBuffer.writeln('      data: json.map((k, v) => MapEntry(k, v)),');
+        classBuffer.writeln(
+          '      data: (json as Map<String, dynamic>).map((k, v) => MapEntry(k, v)),',
+        );
       }
       classBuffer
         ..writeln('    );')
@@ -865,7 +885,9 @@ class SwaggerToDartGenerator {
     final fieldInfos = <String, FieldInfo>{};
 
     properties.forEach((propName, propSchemaRaw) {
-      final propSchema = (propSchemaRaw ?? {}) as Map<String, dynamic>;
+      final propSchema = <String, dynamic>{
+        ...?propSchemaRaw as Map<String, dynamic>?,
+      };
       final propNullable = propSchema['nullable'] as bool? ?? false;
 
       // Правило nullable / required:
@@ -1030,8 +1052,8 @@ class SwaggerToDartGenerator {
     String name,
     Map<String, dynamic> schema,
     GenerationContext context, {
-    List? oneOf,
-    List? anyOf,
+    List<dynamic>? oneOf,
+    List<dynamic>? anyOf,
     SchemaOverride? override,
   }) {
     final className = override?.className ?? _toPascalCase(name);
@@ -1041,7 +1063,7 @@ class SwaggerToDartGenerator {
     // Определяем типы для логирования
     final possibleTypes = <String>[];
     if (hasOneOf) {
-      for (final item in oneOf!) {
+      for (final item in oneOf) {
         if (item is Map<String, dynamic>) {
           final ref = item[r'$ref'] as String?;
           if (ref != null) {
@@ -1057,7 +1079,7 @@ class SwaggerToDartGenerator {
       }
     }
     if (hasAnyOf) {
-      for (final item in anyOf!) {
+      for (final item in anyOf) {
         if (item is Map<String, dynamic>) {
           final ref = item[r'$ref'] as String?;
           if (ref != null) {
@@ -1410,7 +1432,9 @@ class SwaggerToDartGenerator {
     LintConfig lintConfig,
   ) {
     schemas.forEach((schemaName, schemaRaw) {
-      final schema = (schemaRaw ?? {}) as Map<String, dynamic>;
+      final schema = <String, dynamic>{
+        ...?schemaRaw as Map<String, dynamic>?,
+      };
       
       // Проверка enum'ов (включая пустые)
       final enumValues = schema['enum'] as List?;
@@ -1439,9 +1463,11 @@ class SwaggerToDartGenerator {
                 }
               }
 
-      final properties = schema['properties'] as Map<String, dynamic>? ?? {};
+      final properties = schema['properties'] as Map<String, dynamic>? ?? <String, dynamic>{};
       properties.forEach((propName, propSchemaRaw) {
-        final propSchema = (propSchemaRaw ?? {}) as Map<String, dynamic>;
+        final propSchema = <String, dynamic>{
+          ...?propSchemaRaw as Map<String, dynamic>?,
+        };
         
         // Проверка на отсутствие type
         if (lintConfig.isEnabled(LintRuleId.missingType)) {
@@ -1644,7 +1670,9 @@ class SwaggerToDartGenerator {
     }
 
     schemas.forEach((schemaName, schemaRaw) {
-      final schema = (schemaRaw ?? {}) as Map<String, dynamic>;
+      final schema = <String, dynamic>{
+        ...?schemaRaw as Map<String, dynamic>?,
+      };
       checkSchema(schema, schemaName);
     });
   }

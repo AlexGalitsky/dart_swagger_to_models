@@ -109,7 +109,7 @@ class ConfigLoader {
   }
 
   /// Парсит переопределение для схемы.
-  static SchemaOverride _parseSchemaOverride(Map overrideData) {
+  static SchemaOverride _parseSchemaOverride(Map<dynamic, dynamic> overrideData) {
     final className = overrideData['className'] as String?;
     final fieldNames = overrideData['fieldNames'] as Map?;
     final typeMapping = overrideData['typeMapping'] as Map?;
@@ -138,7 +138,7 @@ class ConfigLoader {
   }
 
   /// Парсит конфигурацию lint правил.
-  static LintConfig _parseLintConfig(Map lintData) {
+  static LintConfig _parseLintConfig(Map<dynamic, dynamic> lintData) {
     final rules = <LintRuleId, LintRuleConfig>{};
 
     // Если указан 'enabled: false', отключаем все правила
