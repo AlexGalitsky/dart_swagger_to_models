@@ -3,7 +3,7 @@
 import 'package:json_annotation/json_annotation.dart';
 part 'user.g.dart';
 
-/*SWAGGER-TO-DART: Fields start*/
+/*SWAGGER-TO-DART: Codegen start*/
 @JsonSerializable()
 class User {
   final int id;
@@ -17,4 +17,4 @@ class User {
   Map<String, dynamic> toJson() => _$UserToJson(this);
 }
 
-/*SWAGGER-TO-DART: Fields stop*/
+/*SWAGGER-TO-DART: Codegen stop*/

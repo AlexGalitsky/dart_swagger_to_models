@@ -65,8 +65,8 @@ dart run dart_swagger_to_models:dart_swagger_to_models \
 Генератор всегда работает в режиме per-file:
 - каждая схема → отдельный Dart-файл (`user.dart`, `order.dart` и т.д.),
 - в начале файла — маркер `/*SWAGGER-TO-DART*/` для идентификации,
-- между маркерами `/*SWAGGER-TO-DART: Fields start*/` и
-  `/*SWAGGER-TO-DART: Fields stop*/` код может безопасно перегенерироваться,
+- между маркерами `/*SWAGGER-TO-DART: Codegen start*/` и
+  `/*SWAGGER-TO-DART: Codegen stop*/` код может безопасно перегенерироваться,
   остальной код (импорты, методы, расширения) сохраняется.
 
 Более подробные примеры и описание смотрите в:

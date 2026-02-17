@@ -517,8 +517,8 @@ void main() {
             result.generatedFiles.firstWhere((f) => f.contains('user.dart'));
         final userContent = await File(userFile).readAsString();
         expect(userContent, contains('/*SWAGGER-TO-DART*/'));
-        expect(userContent, contains('/*SWAGGER-TO-DART: Fields start*/'));
-        expect(userContent, contains('/*SWAGGER-TO-DART: Fields stop*/'));
+        expect(userContent, contains('/*SWAGGER-TO-DART: Codegen start*/'));
+        expect(userContent, contains('/*SWAGGER-TO-DART: Codegen stop*/'));
         expect(userContent, contains('class User'));
       });
 
@@ -540,12 +540,12 @@ void customFunction() {
   print('Custom code');
 }
 
-/*SWAGGER-TO-DART: Fields start*/
+/*SWAGGER-TO-DART: Codegen start*/
 // Старое содержимое, которое будет заменено
 class OldUser {
   final String oldField;
 }
-/*SWAGGER-TO-DART: Fields stop*/
+/*SWAGGER-TO-DART: Codegen stop*/
 
 // Кастомный код после маркеров
 extension UserExtension on User {

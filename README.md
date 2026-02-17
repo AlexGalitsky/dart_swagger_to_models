@@ -155,8 +155,8 @@ dart run dart_swagger_to_models:dart_swagger_to_models \
 - **Integration with existing code**: the generator scans the project
   (`--project-dir`) and updates existing files that contain such markers.
 - **Preserving custom code**: only the contents between markers
-  `/*SWAGGER-TO-DART: Fields start*/` and
-  `/*SWAGGER-TO-DART: Fields stop*/` are replaced;
+  `/*SWAGGER-TO-DART: Codegen start*/` and
+  `/*SWAGGER-TO-DART: Codegen stop*/` are replaced;
   everything else (imports, methods, extensions, etc.) is preserved.
 
 **Example of an existing file:**
@@ -171,14 +171,14 @@ void customFunction() {
   print('Custom code');
 }
 
-/*SWAGGER-TO-DART: Fields start*/
+/*SWAGGER-TO-DART: Codegen start*/
 // Generated class will be placed here
 class User {
   final int id;
   final String name;
   // ...
 }
-/*SWAGGER-TO-DART: Fields stop*/
+/*SWAGGER-TO-DART: Codegen stop*/
 
 // Custom code after markers
 extension UserExtension on User {

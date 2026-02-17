@@ -453,11 +453,11 @@ class SwaggerToDartGenerator {
       buffer.writeln();
     }
 
-    buffer.writeln('/*SWAGGER-TO-DART: Fields start*/');
+    buffer.writeln('/*SWAGGER-TO-DART: Codegen start*/');
     buffer.writeln();
     buffer.write(_generateEnum(enumName, schema, context));
     buffer.writeln();
-    buffer.writeln('/*SWAGGER-TO-DART: Fields stop*/');
+    buffer.writeln('/*SWAGGER-TO-DART: Codegen stop*/');
 
     return buffer.toString();
   }
@@ -590,11 +590,11 @@ class SwaggerToDartGenerator {
       buffer.writeln();
     }
 
-    buffer.writeln('/*SWAGGER-TO-DART: Fields start*/');
+    buffer.writeln('/*SWAGGER-TO-DART: Codegen start*/');
     buffer.writeln();
     buffer.write(_generateClass(className, schema, context, style, config: config, override: override));
     buffer.writeln();
-    buffer.writeln('/*SWAGGER-TO-DART: Fields stop*/');
+    buffer.writeln('/*SWAGGER-TO-DART: Codegen stop*/');
 
     return buffer.toString();
   }
@@ -608,8 +608,8 @@ class SwaggerToDartGenerator {
     GenerationStyle? style, {
     Config? config,
   }) {
-    final startMarker = '/*SWAGGER-TO-DART: Fields start*/';
-    final stopMarker = '/*SWAGGER-TO-DART: Fields stop*/';
+    final startMarker = '/*SWAGGER-TO-DART: Codegen start*/';
+    final stopMarker = '/*SWAGGER-TO-DART: Codegen stop*/';
 
     final startIndex = existingContent.indexOf(startMarker);
     final stopIndex = existingContent.indexOf(stopMarker);
@@ -644,8 +644,8 @@ class SwaggerToDartGenerator {
     Config? config,
     SchemaOverride? override,
   }) {
-    final startMarker = '/*SWAGGER-TO-DART: Fields start*/';
-    final stopMarker = '/*SWAGGER-TO-DART: Fields stop*/';
+    final startMarker = '/*SWAGGER-TO-DART: Codegen start*/';
+    final stopMarker = '/*SWAGGER-TO-DART: Codegen stop*/';
 
     final startIndex = existingContent.indexOf(startMarker);
     final stopIndex = existingContent.indexOf(stopMarker);

@@ -29,7 +29,7 @@
       создание новых файлов с маркерами и импортами под стиль.
     - `_updateExistingFileWithEnum` / `_updateExistingFileWithClass` —
       замена кода **только** между
-      `/*SWAGGER-TO-DART: Fields start*/` и `/*SWAGGER-TO-DART: Fields stop*/`.
+      `/*SWAGGER-TO-DART: Codegen start*/` и `/*SWAGGER-TO-DART: Codegen stop*/`.
   - Использует паттерн Strategy через `GeneratorFactory`.
   - Валидирует схемы (`_validateSchemas`) и проверяет отсутствующие цели для `$ref` (`_checkMissingRefs`).
   - Собирает зависимости для генерации импортов (`_collectDependencies`, `_generateImportsForDependencies`).
@@ -130,13 +130,13 @@
   - Внутри файла:
 
     ```dart
-    /*SWAGGER-TO-DART: Fields start*/
+    /*SWAGGER-TO-DART: Codegen start*/
     // сгенерированный код
-    /*SWAGGER-TO-DART: Fields stop*/
+    /*SWAGGER-TO-DART: Codegen stop*/
     ```
 
   - При перегенерации:
-    - заменяется **только** содержимое между маркерами `Fields start/stop`,
+    - заменяется **только** содержимое между маркерами `Codegen start/stop`,
     - остальной код (импорты, методы, extension'ы и т.п.) сохраняется.
 
 - **Правило nullability (критично для моделей)**

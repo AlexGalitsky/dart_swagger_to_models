@@ -25,7 +25,7 @@ the project context.
       `/*SWAGGER-TO-DART*/` marker.
     - `_createNewFileWithEnum` / `_createNewFileWithClass` — create new files with markers and style-specific imports.
     - `_updateExistingFileWithEnum` / `_updateExistingFileWithClass` — replace code **only** between
-      `/*SWAGGER-TO-DART: Fields start*/` and `/*SWAGGER-TO-DART: Fields stop*/`.
+      `/*SWAGGER-TO-DART: Codegen start*/` and `/*SWAGGER-TO-DART: Codegen stop*/`.
   - Uses strategy pattern for class body generation via `GeneratorFactory`.
   - Validates schemas (`_validateSchemas`) and checks for missing `$ref` targets (`_checkMissingRefs`).
   - Collects dependencies for import generation (`_collectDependencies`, `_generateImportsForDependencies`).
@@ -125,13 +125,13 @@ the project context.
   - Inside file:
 
     ```dart
-    /*SWAGGER-TO-DART: Fields start*/
+    /*SWAGGER-TO-DART: Codegen start*/
     // generated code
-    /*SWAGGER-TO-DART: Fields stop*/
+    /*SWAGGER-TO-DART: Codegen stop*/
     ```
 
   - On regeneration:
-    - **Only** content between `Fields start/stop` is replaced.
+    - **Only** content between `Codegen start/stop` is replaced.
     - Everything else (imports, helper functions, extensions) is preserved.
 
 - **Nullability rule (important for models)**

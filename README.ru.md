@@ -148,7 +148,7 @@ dart run dart_swagger_to_models:dart_swagger_to_models \
 - **Одна модель = один файл**: каждая схема из Swagger/OpenAPI генерируется в отдельный файл (например, `user.dart`, `order.dart`).
 - **Маркеры для идентификации**: каждый файл начинается с маркера `/*SWAGGER-TO-DART*/` для идентификации.
 - **Интеграция с существующим кодом**: генератор сканирует проект (`--project-dir`) и обновляет существующие файлы с соответствующими маркерами.
-- **Сохранение кастомного кода**: содержимое между маркерами `/*SWAGGER-TO-DART: Fields start*/` и `/*SWAGGER-TO-DART: Fields stop*/` заменяется, всё остальное сохраняется (импорты, методы, расширения и т.д.).
+- **Сохранение кастомного кода**: содержимое между маркерами `/*SWAGGER-TO-DART: Codegen start*/` и `/*SWAGGER-TO-DART: Codegen stop*/` заменяется, всё остальное сохраняется (импорты, методы, расширения и т.д.).
 
 **Пример существующего файла:**
 
@@ -162,14 +162,14 @@ void customFunction() {
   print('Custom code');
 }
 
-/*SWAGGER-TO-DART: Fields start*/
+/*SWAGGER-TO-DART: Codegen start*/
 // Здесь будет сгенерированный класс
 class User {
   final int id;
   final String? name;
   // ...
 }
-/*SWAGGER-TO-DART: Fields stop*/
+/*SWAGGER-TO-DART: Codegen stop*/
 
 // Кастомный код после маркеров
 extension UserExtension on User {

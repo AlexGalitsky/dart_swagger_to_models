@@ -18,8 +18,8 @@
 - Искать маркер `/*SWAGGER-TO-DART*/` в начале файла для идентификации моделей
 - Если файл модели не найден - создавать новый файл с соответствующим маркером
 - В существующих моделях искать блоки между маркерами:
-  - `/*SWAGGER-TO-DART: Fields start*/`
-  - `/*SWAGGER-TO-DART: Fields stop*/`
+  - `/*SWAGGER-TO-DART: Codegen start*/`
+  - `/*SWAGGER-TO-DART: Codegen stop*/`
 - Генерировать поля модели строго внутри этих маркеров, сохраняя остальное содержимое файла (импорты, доп. методы, кастомную логику)
 
 ### 2.3 Режимы генерации моделей
@@ -39,12 +39,12 @@ part 'user_model.g.dart';
 
 @JsonSerializable()
 class User {
-  /*SWAGGER-TO-DART: Fields start*/
+  /*SWAGGER-TO-DART: Codegen start*/
   final int id;
   final String name;
   @JsonKey(name: 'created_at')
   final DateTime createdAt;
-  /*SWAGGER-TO-DART: Fields stop*/
+  /*SWAGGER-TO-DART: Codegen stop*/
   
   User({required this.id, required this.name, required this.createdAt});
   
@@ -64,11 +64,11 @@ part 'user_model.g.dart';
 @freezed
 class User with _$User {
   factory User({
-    /*SWAGGER-TO-DART: Fields start*/
+    /*SWAGGER-TO-DART: Codegen start*/
     required int id,
     required String name,
     @JsonKey(name: 'created_at') required DateTime createdAt,
-    /*SWAGGER-TO-DART: Fields stop*/
+    /*SWAGGER-TO-DART: Codegen stop*/
   }) = _User;
   
   factory User.fromJson(Map<String, dynamic> json) => _$UserFromJson(json);
