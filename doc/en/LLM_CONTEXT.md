@@ -77,7 +77,7 @@ the project context.
 - **Configuration**: `lib/src/config/*.dart`
   - `config.dart`: `Config` and `SchemaOverride` classes.
   - `config_loader.dart`: `ConfigLoader` for parsing YAML config files.
-  - Supports global options (`defaultStyle`, `outputDir`, `projectDir`, `useJsonKey`).
+  - Supports global options (`defaultStyle`, `outputDir`, `projectDir`, `useJsonKey`, `generateDocs`, `generateValidation`, `generateTestData`).
   - Supports per-schema overrides (`className`, `fieldNames`, `typeMapping`, `useJsonKey`).
   - Priority: CLI arguments > config file > defaults.
 

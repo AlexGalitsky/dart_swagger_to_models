@@ -175,19 +175,21 @@ schemas:
     className: CustomUser
 ```
 
-**Example with `useJsonKey`, documentation generation, and validation:**
+**Example with `useJsonKey`, documentation generation, validation, and test data:**
 
 When `useJsonKey: true` is set, fields with snake_case JSON keys automatically get `@JsonKey` annotations.
 When `generateDocs: true` (default), the generator adds DartDoc comments from schema-level `description` / `example`
 and field-level `description` / `example` (where present).
 When `generateValidation: true`, the generator also creates simple `validate()` helpers based on schema constraints
-(`minimum`/`maximum`, `minLength`/`maxLength`, `minItems`/`maxItems`):
+(`minimum`/`maximum`, `minLength`/`maxLength`, `minItems`/`maxItems`).
+When `generateTestData: true`, the generator creates simple test data factories for models, e.g. `User createUserTestData(...)`.
 
 ```yaml
 # dart_swagger_to_models.yaml
 useJsonKey: true
 generateDocs: true
 generateValidation: true
+generateTestData: true
 ```
 
 For a schema with fields `user_id` and `user_name`, the generator will produce:

@@ -64,6 +64,7 @@ class ConfigLoader {
       final useJsonKey = yaml['useJsonKey'] as bool?;
       final generateDocs = yaml['generateDocs'] as bool?;
       final generateValidation = yaml['generateValidation'] as bool?;
+      final generateTestData = yaml['generateTestData'] as bool?;
 
       // Parse lint configuration
       LintConfig? lintConfig;
@@ -93,6 +94,7 @@ class ConfigLoader {
         lint: lintConfig,
         generateDocs: generateDocs,
         generateValidation: generateValidation,
+        generateTestData: generateTestData,
         schemaOverrides: schemaOverrides,
       );
     } catch (e) {

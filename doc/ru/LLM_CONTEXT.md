@@ -82,7 +82,7 @@
 - **Конфигурация**: `lib/src/config/*.dart`
   - `config.dart`: классы `Config` и `SchemaOverride`.
   - `config_loader.dart`: `ConfigLoader` для парсинга YAML конфигурационных файлов.
-  - Поддерживает глобальные опции (`defaultStyle`, `outputDir`, `projectDir`, `useJsonKey`).
+  - Поддерживает глобальные опции (`defaultStyle`, `outputDir`, `projectDir`, `useJsonKey`, `generateDocs`, `generateValidation`, `generateTestData`).
   - Поддерживает переопределения для схем (`className`, `fieldNames`, `typeMapping`, `useJsonKey`).
   - Приоритет: аргументы CLI > конфигурационный файл > значения по умолчанию.
 

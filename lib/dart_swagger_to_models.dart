@@ -1011,6 +1011,16 @@ class SwaggerToDartGenerator {
       }
     }
 
+    // Optionally generate test data factory
+    final generateTestData = config?.generateTestData ?? false;
+    if (generateTestData) {
+      final testDataFactory =
+          _generateTestDataFactory(className, fieldInfos);
+      if (testDataFactory.isNotEmpty) {
+        classCode = '$classCode\n\n$testDataFactory';
+      }
+    }
+
     if (classDoc != null) {
       return '$classDoc\n$classCode';
     }
@@ -1167,6 +1177,113 @@ class SwaggerToDartGenerator {
       ..writeln('}');
 
     return buffer.toString();
+  }
+
+  /// Generates simple test data factory function for a class.
+  ///
+  /// The factory provides sensible defaults for primitive fields and
+  /// requires explicit parameters only for unsupported/custom types.
+  static String _generateTestDataFactory(
+    String className,
+    Map<String, FieldInfo> fields,
+  ) {
+    if (fields.isEmpty) {
+      return '';
+    }
+
+    final requiredFields =
+        fields.values.where((f) => f.isRequired).toList();
+    if (requiredFields.isEmpty) {
+      return '';
+    }
+
+    // Determine which required fields need to be passed in as parameters
+    final fieldsNeedingParams = <FieldInfo>[];
+    final defaultValues = <String, String?>{};
+
+    for (final field in requiredFields) {
+      final defaultExpr = _testDataDefaultForType(field.dartType);
+      if (defaultExpr == null) {
+        fieldsNeedingParams.add(field);
+      } else {
+        defaultValues[field.name] = defaultExpr;
+      }
+    }
+
+    final funcName = 'create${className}TestData';
+    final buffer = StringBuffer()
+      ..writeln('$className $funcName({');
+
+    for (final field in fieldsNeedingParams) {
+      buffer.writeln(
+          '  required ${field.dartType} ${field.camelCaseName},');
+    }
+
+    buffer
+      ..writeln('}) {')
+      ..writeln('  return $className(');
+
+    for (final field in requiredFields) {
+      final paramName = field.camelCaseName;
+      final jsonKey = field.name;
+      final defaultExpr = defaultValues[jsonKey];
+      if (defaultExpr != null) {
+        buffer.writeln('    $paramName: $defaultExpr,');
+      } else {
+        buffer.writeln('    $paramName: $paramName,');
+      }
+    }
+
+    buffer
+      ..writeln('  );')
+      ..writeln('}');
+
+    return buffer.toString();
+  }
+
+  /// Returns a simple test value expression for a given Dart type,
+  /// or null if the type is not supported and should be passed in.
+  static String? _testDataDefaultForType(String dartType) {
+    var base = dartType.trim();
+    final isNullable = base.endsWith('?');
+    if (isNullable) {
+      base = base.substring(0, base.length - 1);
+    }
+
+    switch (base) {
+      case 'int':
+        return '1';
+      case 'num':
+        return '1';
+      case 'double':
+        return '1.0';
+      case 'bool':
+        return 'true';
+      case 'String':
+        return "'example'";
+      case 'DateTime':
+        return "DateTime.parse('2020-01-01T00:00:00Z')";
+    }
+
+    if (base.startsWith('List<') && base.endsWith('>')) {
+      final inner = base.substring(5, base.length - 1).trim();
+      if (inner.isEmpty) {
+        return 'const []';
+      }
+      return '<$inner>[]';
+    }
+
+    if (base.startsWith('Map<String,') && base.endsWith('>')) {
+      final valueType =
+          base.substring('Map<String,'.length, base.length - 1).trim();
+      if (valueType.isEmpty) {
+        return '<String, dynamic>{}';
+      }
+      return '<String, $valueType>{}';
+    }
+
+    // Unknown/custom type
+    return null;
   }
 
   /// Generates class for allOf schema.

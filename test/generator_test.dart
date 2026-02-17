@@ -441,6 +441,60 @@ void main() {
               "errors.add('Product.tags items count must be <= 5.');"));
     });
 
+    test('generates simple test data factory for supported types', () async {
+      final tempDir = await Directory.systemTemp
+          .createTemp('dart_swagger_to_models_testdata_');
+      final specFile = File('${tempDir.path}/openapi.json');
+
+      final spec = <String, dynamic>{
+        'openapi': '3.0.0',
+        'info': {
+          'title': 'Test API',
+          'version': '1.0.0',
+        },
+        'paths': <String, dynamic>{},
+        'components': {
+          'schemas': {
+            'User': {
+              'type': 'object',
+              'properties': {
+                'id': {'type': 'integer'},
+                'name': {'type': 'string'},
+                'tags': {
+                  'type': 'array',
+                  'items': {'type': 'string'},
+                },
+              },
+            },
+          },
+        },
+      };
+
+      await specFile.writeAsString(jsonEncode(spec));
+
+      final configFile =
+          File('${tempDir.path}/dart_swagger_to_models.yaml');
+      await configFile.writeAsString('generateTestData: true\n');
+
+      final result = await SwaggerToDartGenerator.generateModels(
+        input: specFile.path,
+        outputDir: '${tempDir.path}/models',
+        libraryName: 'api_models',
+        projectDir: tempDir.path,
+      );
+
+      final userFile =
+          result.generatedFiles.firstWhere((f) => f.contains('user.dart'));
+      final content = await File(userFile).readAsString();
+
+      expect(content,
+          contains('User createUserTestData({'));
+      expect(content, contains('return User('));
+      expect(content, contains('id: 1,'));
+      expect(content, contains("name: 'example',"));
+      expect(content, contains('tags: <String>[],'));
+    });
+
     test('distinguishes int and num', () async {
       final tempDir =
           await Directory.systemTemp.createTemp('dart_swagger_to_models_test_');

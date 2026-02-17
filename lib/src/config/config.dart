@@ -31,6 +31,11 @@ class Config {
   /// If null, validation generation is disabled by default.
   final bool? generateValidation;
 
+  /// Whether to generate simple test data factories for models.
+  ///
+  /// If null, test data generation is disabled by default.
+  final bool? generateTestData;
+
   /// Overrides for individual schemas.
   final Map<String, SchemaOverride> schemaOverrides;
 
@@ -43,6 +48,7 @@ class Config {
     this.lint,
     this.generateDocs,
     this.generateValidation,
+    this.generateTestData,
     Map<String, SchemaOverride>? schemaOverrides,
   }) : schemaOverrides = schemaOverrides ?? {};
 
@@ -60,6 +66,7 @@ class Config {
       lint: other.lint ?? lint,
       generateDocs: other.generateDocs ?? generateDocs,
       generateValidation: other.generateValidation ?? generateValidation,
+      generateTestData: other.generateTestData ?? generateTestData,
       schemaOverrides: {
         ...schemaOverrides,
         ...other.schemaOverrides,
