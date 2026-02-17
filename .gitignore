@@ -1,4 +1,31 @@
 # https://dart.dev/guides/libraries/private-files
 # Created by `dart pub`
 .dart_tool/
+
+# Test output
 /test_output
+
+# Build outputs
+/build/
+*.dart.js
+*.dart.js.map
+*.info.json
+
+# IDE
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Cache
+.dart_swagger_to_models.cache
+*.cache
+
+# Generated files
+*.g.dart
+*.freezed.dart
