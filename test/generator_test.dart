@@ -362,6 +362,85 @@ void main() {
           contains('/// Display name of the user.\n  final String name;'));
     });
 
+    test('generates simple validation extension from schema constraints',
+        () async {
+      final tempDir = await Directory.systemTemp
+          .createTemp('dart_swagger_to_models_validation_');
+      final specFile = File('${tempDir.path}/openapi.json');
+
+      final spec = <String, dynamic>{
+        'openapi': '3.0.0',
+        'info': {
+          'title': 'Test API',
+          'version': '1.0.0',
+        },
+        'paths': <String, dynamic>{},
+        'components': {
+          'schemas': {
+            'Product': {
+              'type': 'object',
+              'properties': {
+                'id': {
+                  'type': 'integer',
+                  'minimum': 1,
+                },
+                'name': {
+                  'type': 'string',
+                  'minLength': 3,
+                  'maxLength': 50,
+                },
+                'tags': {
+                  'type': 'array',
+                  'items': {'type': 'string'},
+                  'minItems': 1,
+                  'maxItems': 5,
+                },
+              },
+            },
+          },
+        },
+      };
+
+      await specFile.writeAsString(jsonEncode(spec));
+
+      final configFile =
+          File('${tempDir.path}/dart_swagger_to_models.yaml');
+      await configFile.writeAsString('generateValidation: true\n');
+
+      final result = await SwaggerToDartGenerator.generateModels(
+        input: specFile.path,
+        outputDir: '${tempDir.path}/models',
+        libraryName: 'api_models',
+        projectDir: tempDir.path,
+      );
+
+      final productFile =
+          result.generatedFiles.firstWhere((f) => f.contains('product.dart'));
+      final content = await File(productFile).readAsString();
+
+      expect(content,
+          contains('extension ProductValidation on Product'));
+      expect(content, contains('List<String> validate()'));
+      expect(content,
+          contains("errors.add('Product.id must be >= 1.');"));
+      expect(
+          content,
+          contains(
+              "errors.add('Product.name length must be >= 3.');"));
+      expect(
+          content,
+          contains(
+              "errors.add('Product.name length must be <= 50.');"));
+      expect(
+          content,
+          contains(
+              "errors.add('Product.tags items count must be >= 1.');"));
+      expect(
+          content,
+          contains(
+              "errors.add('Product.tags items count must be <= 5.');"));
+    });
+
     test('distinguishes int and num', () async {
       final tempDir =
           await Directory.systemTemp.createTemp('dart_swagger_to_models_test_');

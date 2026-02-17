@@ -26,6 +26,11 @@ class Config {
   /// If null, documentation generation is enabled by default.
   final bool? generateDocs;
 
+  /// Whether to generate validation helpers from Swagger/OpenAPI constraints.
+  ///
+  /// If null, validation generation is disabled by default.
+  final bool? generateValidation;
+
   /// Overrides for individual schemas.
   final Map<String, SchemaOverride> schemaOverrides;
 
@@ -37,6 +42,7 @@ class Config {
     this.useJsonKey,
     this.lint,
     this.generateDocs,
+    this.generateValidation,
     Map<String, SchemaOverride>? schemaOverrides,
   }) : schemaOverrides = schemaOverrides ?? {};
 
@@ -53,6 +59,7 @@ class Config {
       useJsonKey: other.useJsonKey ?? useJsonKey,
       lint: other.lint ?? lint,
       generateDocs: other.generateDocs ?? generateDocs,
+      generateValidation: other.generateValidation ?? generateValidation,
       schemaOverrides: {
         ...schemaOverrides,
         ...other.schemaOverrides,

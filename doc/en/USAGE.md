@@ -175,16 +175,19 @@ schemas:
     className: CustomUser
 ```
 
-**Example with `useJsonKey` and documentation generation:**
+**Example with `useJsonKey`, documentation generation, and validation:**
 
 When `useJsonKey: true` is set, fields with snake_case JSON keys automatically get `@JsonKey` annotations.
 When `generateDocs: true` (default), the generator adds DartDoc comments from schema-level `description` / `example`
-and field-level `description` / `example` (where present):
+and field-level `description` / `example` (where present).
+When `generateValidation: true`, the generator also creates simple `validate()` helpers based on schema constraints
+(`minimum`/`maximum`, `minLength`/`maxLength`, `minItems`/`maxItems`):
 
 ```yaml
 # dart_swagger_to_models.yaml
 useJsonKey: true
 generateDocs: true
+generateValidation: true
 ```
 
 For a schema with fields `user_id` and `user_name`, the generator will produce:
@@ -229,7 +232,44 @@ This rule is applied consistently across all three styles:
 
 ---
 
-### 8. Logging and output control
+### 8. Validation helpers
+
+When `generateValidation: true` is set in `dart_swagger_to_models.yaml`, the generator emits simple validation helpers
+based on schema constraints:
+
+- Numeric fields (`int`, `num`, `double`):
+  - `minimum` / `maximum` (or `min` / `max`).
+- String fields (`String`):
+  - `minLength` / `maxLength`.
+- Array fields (`List<...>`):
+  - `minItems` / `maxItems`.
+
+For each class `User` a corresponding extension is generated:
+
+```dart
+extension UserValidation on User {
+  /// Returns a list of validation error messages. Empty if the instance is valid.
+  List<String> validate() {
+    final errors = <String>[];
+    // ... generated checks based on schema ...
+    return errors;
+  }
+}
+```
+
+Typical usage:
+
+```dart
+final user = User(...);
+final errors = user.validate();
+if (errors.isNotEmpty) {
+  // handle validation errors
+}
+```
+
+---
+
+### 9. Logging and output control
 
 The generator provides flexible logging options:
 

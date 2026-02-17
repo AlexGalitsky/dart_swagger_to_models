@@ -987,7 +987,7 @@ class SwaggerToDartGenerator {
     // Use strategy for class generation
     final strategy = GeneratorFactory.createStrategy(style,
         customStyleName: config?.customStyleName);
-    final classCode = strategy.generateFullClass(
+    var classCode = strategy.generateFullClass(
       className,
       fieldInfos,
       (jsonKey, schema) {
@@ -1001,10 +1001,172 @@ class SwaggerToDartGenerator {
       useJsonKey: useJsonKey,
     );
 
+    // Optionally generate validation helpers
+    final generateValidation = config?.generateValidation ?? false;
+    if (generateValidation) {
+      final validationExtension =
+          _generateValidationExtension(className, fieldInfos, schema);
+      if (validationExtension.isNotEmpty) {
+        classCode = '$classCode\n\n$validationExtension';
+      }
+    }
+
     if (classDoc != null) {
       return '$classDoc\n$classCode';
     }
     return classCode;
+  }
+
+  /// Generates validation extension based on schema constraints.
+  ///
+  /// Supports numeric (`minimum`/`maximum`), string (`minLength`/`maxLength`),
+  /// and array (`minItems`/`maxItems`) constraints.
+  static String _generateValidationExtension(
+    String className,
+    Map<String, FieldInfo> fields,
+    Map<String, dynamic> schema,
+  ) {
+    final properties = schema['properties'] as Map<String, dynamic>? ?? {};
+    if (properties.isEmpty) {
+      return '';
+    }
+
+    final buffer = StringBuffer()
+      ..writeln('extension ${className}Validation on $className {')
+      ..writeln(
+          '  /// Returns a list of validation error messages. Empty if the instance is valid.')
+      ..writeln('  List<String> validate() {')
+      ..writeln('    final errors = <String>[];');
+
+    properties.forEach((propName, _) {
+      final field = fields[propName];
+      if (field == null) {
+        return;
+      }
+      final fieldSchema = field.schema;
+      final dartType = field.dartType;
+      final isNullable = dartType.endsWith('?');
+      final baseType =
+          isNullable ? dartType.substring(0, dartType.length - 1) : dartType;
+      final fieldName = field.camelCaseName;
+
+      final minimum = fieldSchema['minimum'] ?? fieldSchema['min'];
+      final maximum = fieldSchema['maximum'] ?? fieldSchema['max'];
+      final minLength = fieldSchema['minLength'];
+      final maxLength = fieldSchema['maxLength'];
+      final minItems = fieldSchema['minItems'];
+      final maxItems = fieldSchema['maxItems'];
+
+      final hasNumericConstraints = (minimum is num) || (maximum is num);
+      final hasStringLengthConstraints =
+          (minLength is int) || (maxLength is int);
+      final hasArrayLengthConstraints =
+          (minItems is int) || (maxItems is int);
+
+      // Numbers: int / num / double
+      if (hasNumericConstraints &&
+          (baseType == 'int' || baseType == 'num' || baseType == 'double')) {
+        if (minimum is num) {
+          if (isNullable) {
+            buffer.writeln(
+                '    final $dartType _value${className}_$fieldName = $fieldName;');
+            buffer.writeln(
+                '    if (_value${className}_$fieldName != null && _value${className}_$fieldName! < $minimum) {');
+          } else {
+            buffer
+                .writeln('    if ($fieldName < $minimum) {');
+          }
+          buffer.writeln(
+              "      errors.add('$className.$propName must be >= $minimum.');");
+          buffer.writeln('    }');
+        }
+        if (maximum is num) {
+          if (isNullable) {
+            buffer.writeln(
+                '    final $dartType _valueMax${className}_$fieldName = $fieldName;');
+            buffer.writeln(
+                '    if (_valueMax${className}_$fieldName != null && _valueMax${className}_$fieldName! > $maximum) {');
+          } else {
+            buffer
+                .writeln('    if ($fieldName > $maximum) {');
+          }
+          buffer.writeln(
+              "      errors.add('$className.$propName must be <= $maximum.');");
+          buffer.writeln('    }');
+        }
+      }
+
+      // Strings: minLength / maxLength
+      if (baseType == 'String' && hasStringLengthConstraints) {
+        if (minLength is int) {
+          if (isNullable) {
+            buffer.writeln(
+                '    final $dartType _valueLenMin${className}_$fieldName = $fieldName;');
+            buffer.writeln(
+                '    if (_valueLenMin${className}_$fieldName != null && _valueLenMin${className}_$fieldName!.length < $minLength) {');
+          } else {
+            buffer.writeln(
+                '    if ($fieldName.length < $minLength) {');
+          }
+          buffer.writeln(
+              "      errors.add('$className.$propName length must be >= $minLength.');");
+          buffer.writeln('    }');
+        }
+        if (maxLength is int) {
+          if (isNullable) {
+            buffer.writeln(
+                '    final $dartType _valueLenMax${className}_$fieldName = $fieldName;');
+            buffer.writeln(
+                '    if (_valueLenMax${className}_$fieldName != null && _valueLenMax${className}_$fieldName!.length > $maxLength) {');
+          } else {
+            buffer.writeln(
+                '    if ($fieldName.length > $maxLength) {');
+          }
+          buffer.writeln(
+              "      errors.add('$className.$propName length must be <= $maxLength.');");
+          buffer.writeln('    }');
+        }
+      }
+
+      // Arrays: minItems / maxItems
+      if (baseType.startsWith('List<') && hasArrayLengthConstraints) {
+        if (minItems is int) {
+          if (isNullable) {
+            buffer.writeln(
+                '    final $dartType _valueItemsMin${className}_$fieldName = $fieldName;');
+            buffer.writeln(
+                '    if (_valueItemsMin${className}_$fieldName != null && _valueItemsMin${className}_$fieldName!.length < $minItems) {');
+          } else {
+            buffer.writeln(
+                '    if ($fieldName.length < $minItems) {');
+          }
+          buffer.writeln(
+              "      errors.add('$className.$propName items count must be >= $minItems.');");
+          buffer.writeln('    }');
+        }
+        if (maxItems is int) {
+          if (isNullable) {
+            buffer.writeln(
+                '    final $dartType _valueItemsMax${className}_$fieldName = $fieldName;');
+            buffer.writeln(
+                '    if (_valueItemsMax${className}_$fieldName != null && _valueItemsMax${className}_$fieldName!.length > $maxItems) {');
+          } else {
+            buffer.writeln(
+                '    if ($fieldName.length > $maxItems) {');
+          }
+          buffer.writeln(
+              "      errors.add('$className.$propName items count must be <= $maxItems.');");
+          buffer.writeln('    }');
+        }
+      }
+    });
+
+    buffer
+      ..writeln('    return errors;')
+      ..writeln('  }')
+      ..writeln('}');
+
+    return buffer.toString();
   }
 
   /// Generates class for allOf schema.
