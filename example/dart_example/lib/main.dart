@@ -2,7 +2,7 @@ import 'package:dart_example/generated/models/user.dart';
 import 'package:dart_example/generated/models/product.dart';
 
 void main() {
-  // Пример использования сгенерированных моделей
+  // Example usage of generated models
   final user = User.fromJson({
     'id': 1,
     'name': 'John Doe',

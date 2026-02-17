@@ -1,10 +1,10 @@
 import 'package:dart_swagger_to_models/dart_swagger_to_models.dart';
 import 'package:equatable/equatable.dart';
 
-/// Пример кастомного генератора стиля с поддержкой Equatable.
+/// Example of a custom generation style with Equatable support.
 ///
-/// Этот пример демонстрирует, как создать собственный стиль генерации,
-/// который добавляет поддержку пакета equatable для сравнения объектов.
+/// This example shows how to create your own generation style
+/// that adds support for the `equatable` package to compare objects.
 class EquatableGenerator extends ClassGeneratorStrategy {
   @override
   List<String> generateImportsAndParts(String fileName) {
@@ -31,14 +31,14 @@ class EquatableGenerator extends ClassGeneratorStrategy {
     final buffer = StringBuffer()
       ..writeln('class $className extends Equatable {');
 
-    // Поля
+    // Fields
     fields.forEach((propName, field) {
       buffer.writeln('  final ${field.dartType} ${field.camelCaseName};');
     });
 
     buffer.writeln();
 
-    // Конструктор
+    // Constructor
     buffer.writeln('  const $className({');
     fields.forEach((propName, field) {
       final prefix = field.isRequired ? 'required ' : '';
@@ -85,10 +85,10 @@ class EquatableGenerator extends ClassGeneratorStrategy {
   }
 }
 
-/// Функция для регистрации кастомного стиля.
+/// Helper function to register the custom style.
 ///
-/// Эта функция должна быть вызвана перед использованием кастомного стиля.
-/// Обычно это делается в main() функции или в отдельном файле инициализации.
+/// This function must be called before using the custom style.
+/// Typically this is done in main() or in a separate initialization file.
 void registerEquatableStyle() {
   StyleRegistry.register('equatable', () => EquatableGenerator());
 }
