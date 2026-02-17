@@ -127,6 +127,7 @@ schemas:
 
 - **USAGE (EN)**: `doc/en/USAGE.md` — detailed usage guide (CLI options, config, linting, incremental generation, build_runner integration)
 - **Custom styles (EN)**: `doc/en/CUSTOM_STYLES.md` — how to implement your own generation style
+- **Developer guide (EN)**: `doc/en/DEVELOPERS.md` — project structure and contributor workflow
 - **Russian docs (RU)**:
   - `doc/ru/README.md` — краткий обзор на русском
   - `doc/ru/USAGE.md` — подробное руководство на русском
