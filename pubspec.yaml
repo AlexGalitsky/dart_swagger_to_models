@@ -1,8 +1,5 @@
 name: dart_swagger_to_models
-description: >
-  CLI tool for generating null-safe Dart models from Swagger/OpenAPI specifications
-  (JSON/YAML). Supports multiple generation styles (plain_dart, json_serializable, freezed)
-  and per-file mode (one model = one file).
+description: Generate null-safe Dart models from Swagger/OpenAPI specs with multiple styles and per-file output.
 version: 0.5.2
 
 homepage: https://github.com/AlexGalitsky/dart_swagger_to_models
