@@ -1,7 +1,12 @@
+<div align="center">
+  <img src="images/logo.png" alt="dart_swagger_to_models" width="200"/>
+</div>
+
 # dart_swagger_to_models
 
 [![Pub Version](https://img.shields.io/pub/v/dart_swagger_to_models)](https://pub.dev/packages/dart_swagger_to_models)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+![GitHub Stars](https://img.shields.io/github/stars/AlexGalitsky/dart_swagger_to_models.svg?style=flat-square&label=stars)
 [![Dart SDK](https://img.shields.io/badge/Dart-3.3%2B-blue.svg)](https://dart.dev/)
 
 > **CLI tool for generating null-safe Dart models from Swagger/OpenAPI specifications**

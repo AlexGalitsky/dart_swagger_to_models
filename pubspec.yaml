@@ -9,6 +9,10 @@ homepage: https://github.com/AlexGalitsky/dart_swagger_to_models
 repository: https://github.com/AlexGalitsky/dart_swagger_to_models
 issue_tracker: https://github.com/AlexGalitsky/dart_swagger_to_models/issues
 
+screenshots:
+  - description: 'Dart - Swagger to models logo.'
+    path: images/logo.png
+
 topics:
   - dart
   - swagger
