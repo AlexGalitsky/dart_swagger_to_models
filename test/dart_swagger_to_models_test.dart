@@ -10,7 +10,7 @@ import 'package:test/test.dart';
 
 void main() {
   group('SwaggerToDartGenerator', () {
-    test('генерирует Dart-модели из простого Swagger 2.0', () async {
+    test('generates Dart models from simple Swagger 2.0', () async {
       final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_test_');
       final specFile = File('${tempDir.path}/swagger.json');
 
@@ -55,7 +55,7 @@ void main() {
       expect(content, contains('Map<String, dynamic> toJson()'));
     });
 
-    test('генерирует enum для строковых типов с enum значениями', () async {
+    test('generates enum for string types with enum values', () async {
       final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_test_');
       final specFile = File('${tempDir.path}/swagger.json');
 
@@ -100,7 +100,7 @@ void main() {
       expect(content, contains('dynamic toJson() => value;'));
     });
 
-    test('поддерживает OpenAPI 3.0 с nullable полями', () async {
+    test('supports OpenAPI 3.0 with nullable fields', () async {
       final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_test_');
       final specFile = File('${tempDir.path}/openapi.json');
 
@@ -146,7 +146,7 @@ void main() {
       expect(content, contains('final num price;'));
     });
 
-    test('поддерживает allOf (OpenAPI 3)', () async {
+    test('supports allOf (OpenAPI 3)', () async {
       final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_test_');
       final specFile = File('${tempDir.path}/openapi.json');
 
@@ -209,7 +209,7 @@ void main() {
       expect(userContent, contains('final String email;'));
     });
 
-    test('поддерживает массивы с вложенными типами', () async {
+    test('supports arrays with nested types', () async {
       final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_test_');
       final specFile = File('${tempDir.path}/swagger.json');
 
@@ -250,7 +250,7 @@ void main() {
       expect(content, contains('List<dynamic>'));
     });
 
-    test('поддерживает additionalProperties', () async {
+    test('supports additionalProperties', () async {
       final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_test_');
       final specFile = File('${tempDir.path}/openapi.json');
 
@@ -291,7 +291,7 @@ void main() {
       expect(content, contains('Map<String, String>'));
     });
 
-    test('различает int и num', () async {
+    test('distinguishes int and num', () async {
       final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_test_');
       final specFile = File('${tempDir.path}/swagger.json');
 
@@ -331,7 +331,7 @@ void main() {
   });
 
   group('Generation styles', () {
-    test('plain_dart (по умолчанию) генерирует ручной fromJson/toJson', () async {
+    test('plain_dart (default) generates manual fromJson/toJson', () async {
       final tempDir =
           await Directory.systemTemp.createTemp('dart_swagger_to_models_style_plain_');
       final specFile = File('${tempDir.path}/swagger.json');
@@ -372,7 +372,7 @@ void main() {
       expect(content, contains('Map<String, dynamic> toJson()'));
     });
 
-    test('json_serializable генерирует @JsonSerializable и делегирует в _\$UserFromJson', () async {
+    test('json_serializable generates @JsonSerializable and delegates to _\$UserFromJson', () async {
       final tempDir =
           await Directory.systemTemp.createTemp('dart_swagger_to_models_style_json_');
       final specFile = File('${tempDir.path}/swagger.json');
@@ -420,7 +420,7 @@ void main() {
       expect(content, contains("part 'user.g.dart';"));
     });
 
-    test('freezed генерирует @freezed и const factory', () async {
+    test('freezed generates @freezed and const factory', () async {
       final tempDir =
           await Directory.systemTemp.createTemp('dart_swagger_to_models_style_freezed_');
       final specFile = File('${tempDir.path}/swagger.json');
@@ -467,8 +467,8 @@ void main() {
       expect(content, contains("part 'user.g.dart';"));
     });
 
-    group('Режим per-file (одна модель = один файл)', () {
-      test('создаёт отдельные файлы для каждой модели', () async {
+    group('Per-file mode (one model = one file)', () {
+      test('creates separate files for each model', () async {
         final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_test_');
         final specFile = File('${tempDir.path}/swagger.json');
 
@@ -522,7 +522,7 @@ void main() {
         expect(userContent, contains('class User'));
       });
 
-      test('обновляет существующий файл, сохраняя содержимое вне маркеров', () async {
+      test('updates existing file, preserving content outside markers', () async {
         final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_test_');
         final specFile = File('${tempDir.path}/swagger.json');
         final modelsDir = Directory('${tempDir.path}/models');
@@ -594,7 +594,7 @@ extension UserExtension on User {
         expect(updatedContent, isNot(contains('oldField')));
       });
 
-      test('поддерживает json_serializable в режиме per-file', () async {
+      test('supports json_serializable in per-file mode', () async {
         final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_test_');
         final specFile = File('${tempDir.path}/swagger.json');
 
@@ -638,7 +638,7 @@ extension UserExtension on User {
         expect(content, contains('_\$ProductToJson'));
       });
 
-      test('поддерживает freezed в режиме per-file', () async {
+      test('supports freezed in per-file mode', () async {
         final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_test_');
         final specFile = File('${tempDir.path}/swagger.json');
 
@@ -684,8 +684,8 @@ extension UserExtension on User {
     });
   });
 
-  group('Конфигурационный файл', () {
-    test('загружает конфигурацию из YAML файла', () async {
+  group('Configuration file', () {
+    test('loads configuration from YAML file', () async {
       final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_config_');
       final configFile = File('${tempDir.path}/dart_swagger_to_models.yaml');
 
@@ -702,7 +702,7 @@ projectDir: ${tempDir.path}
       expect(config.projectDir, equals(tempDir.path));
     });
 
-    test('применяет приоритет CLI > config > defaults', () async {
+    test('applies priority CLI > config > defaults', () async {
       final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_priority_');
       final configFile = File('${tempDir.path}/dart_swagger_to_models.yaml');
       final specFile = File('${tempDir.path}/swagger.json');
@@ -741,7 +741,7 @@ outputDir: lib/config_models
       expect(content, contains('@freezed')); // CLI style
     });
 
-    test('использует значения из config, если CLI не указан', () async {
+    test('uses values from config if CLI is not specified', () async {
       final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_config_only_');
       final configFile = File('${tempDir.path}/dart_swagger_to_models.yaml');
       final specFile = File('${tempDir.path}/swagger.json');
@@ -777,7 +777,7 @@ outputDir: lib/config_models
       expect(content, contains('@JsonSerializable')); // Config style
     });
 
-    test('применяет переопределения для схем: className', () async {
+    test('applies schema overrides: className', () async {
       final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_override_');
       final configFile = File('${tempDir.path}/dart_swagger_to_models.yaml');
       final specFile = File('${tempDir.path}/swagger.json');
@@ -815,7 +815,7 @@ schemas:
       expect(content, isNot(contains('class User')));
     });
 
-    test('применяет переопределения для схем: fieldNames', () async {
+    test('applies schema overrides: fieldNames', () async {
       final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_fieldnames_');
       final configFile = File('${tempDir.path}/dart_swagger_to_models.yaml');
       final specFile = File('${tempDir.path}/swagger.json');
@@ -860,7 +860,7 @@ schemas:
       expect(content, contains("json['user_name']"));
     });
 
-    test('применяет переопределения для схем: typeMapping', () async {
+    test('applies schema overrides: typeMapping', () async {
       final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_typemap_');
       final configFile = File('${tempDir.path}/dart_swagger_to_models.yaml');
       final specFile = File('${tempDir.path}/swagger.json');
@@ -903,7 +903,7 @@ schemas:
       expect(content, contains('final MyCustomString name;'));
     });
 
-    test('возвращает пустую конфигурацию, если файл не найден', () async {
+    test('returns empty configuration if file not found', () async {
       final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_no_config_');
       final config = await ConfigLoader.loadConfig(null, tempDir.path);
 
@@ -913,7 +913,7 @@ schemas:
       expect(config.schemaOverrides, isEmpty);
     });
 
-    test('загружает конфигурацию по указанному пути', () async {
+    test('loads configuration from specified path', () async {
       final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_custom_path_');
       final configFile = File('${tempDir.path}/custom_config.yaml');
 
@@ -929,8 +929,8 @@ outputDir: lib/custom
     });
   });
 
-  group('Качество генерируемого кода', () {
-    test('поддерживает x-enumNames для enum значений', () async {
+  group('Generated code quality', () {
+    test('supports x-enumNames for enum values', () async {
       final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_enum_names_');
       final specFile = File('${tempDir.path}/swagger.json');
 
@@ -964,7 +964,7 @@ outputDir: lib/custom
       expect(content.contains('Active') || content.contains('Inactive') || content.contains('Pending'), isTrue);
     });
 
-    test('поддерживает x-enum-varnames для enum значений', () async {
+    test('supports x-enum-varnames for enum values', () async {
       final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_enum_varnames_');
       final specFile = File('${tempDir.path}/swagger.json');
 
@@ -995,7 +995,7 @@ outputDir: lib/custom
       expect(content, contains('InactiveStatus;'));
     });
 
-    test('генерирует импорты для зависимостей между моделями', () async {
+    test('generates imports for dependencies between models', () async {
       final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_imports_');
       final specFile = File('${tempDir.path}/swagger.json');
 
@@ -1038,10 +1038,10 @@ outputDir: lib/custom
       final hasImport = content.contains("import 'user.dart';") || 
                        content.contains("import './user.dart';") ||
                        content.contains("import 'user';");
-      expect(hasImport, isTrue, reason: 'Должен быть импорт для User. Содержимое: $content');
+      expect(hasImport, isTrue, reason: 'Should have import for User. Content: $content');
     });
 
-    test('не генерирует импорт на самого себя', () async {
+    test('does not generate import for itself', () async {
       final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_no_self_import_');
       final specFile = File('${tempDir.path}/swagger.json');
 
@@ -1076,8 +1076,8 @@ outputDir: lib/custom
     });
   });
 
-  group('Улучшение ergonomics для json_serializable / freezed', () {
-    test('генерирует @JsonKey для snake_case JSON-ключей в json_serializable', () async {
+  group('Better ergonomics for json_serializable / freezed', () {
+    test('generates @JsonKey for snake_case JSON keys in json_serializable', () async {
       final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_jsonkey_');
       final configFile = File('${tempDir.path}/dart_swagger_to_models.yaml');
       final specFile = File('${tempDir.path}/swagger.json');
@@ -1124,7 +1124,7 @@ useJsonKey: true
       expect(content, contains('final String email;'));
     });
 
-    test('генерирует @JsonKey для snake_case JSON-ключей в freezed', () async {
+    test('generates @JsonKey for snake_case JSON keys in freezed', () async {
       final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_jsonkey_freezed_');
       final configFile = File('${tempDir.path}/dart_swagger_to_models.yaml');
       final specFile = File('${tempDir.path}/swagger.json');
@@ -1167,7 +1167,7 @@ useJsonKey: true
       expect(content, contains('required String userName,'));
     });
 
-    test('не генерирует @JsonKey, если useJsonKey: false', () async {
+    test('does not generate @JsonKey if useJsonKey: false', () async {
       final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_no_jsonkey_');
       final configFile = File('${tempDir.path}/dart_swagger_to_models.yaml');
       final specFile = File('${tempDir.path}/swagger.json');
@@ -1207,7 +1207,7 @@ useJsonKey: false
       expect(content, contains('final int userId;'));
     });
 
-    test('переопределение useJsonKey на уровне схемы', () async {
+    test('useJsonKey override at schema level', () async {
       final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_jsonkey_override_');
       final configFile = File('${tempDir.path}/dart_swagger_to_models.yaml');
       final specFile = File('${tempDir.path}/swagger.json');
@@ -1263,8 +1263,8 @@ schemas:
     });
   });
 
-  group('Подсказки по качеству спецификаций (spec linting)', () {
-    test('lint правила работают по умолчанию', () async {
+  group('Spec quality hints (spec linting)', () {
+    test('lint rules work by default', () async {
       final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_lint_');
       final specFile = File('${tempDir.path}/swagger.json');
 
@@ -1295,7 +1295,7 @@ schemas:
       expect(Logger.warnings.length, greaterThan(0));
     });
 
-    test('lint правила можно отключить через конфиг', () async {
+    test('lint rules can be disabled via config', () async {
       final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_lint_disabled_');
       final configFile = File('${tempDir.path}/dart_swagger_to_models.yaml');
       final specFile = File('${tempDir.path}/swagger.json');
@@ -1333,7 +1333,7 @@ lint:
       expect(Logger.warnings.length, 0);
     });
 
-    test('lint правила можно настроить индивидуально', () async {
+    test('lint rules can be configured individually', () async {
       final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_lint_custom_');
       final configFile = File('${tempDir.path}/dart_swagger_to_models.yaml');
       final specFile = File('${tempDir.path}/swagger.json');
@@ -1372,13 +1372,13 @@ lint:
 
       // Должна быть ошибка для missing_type
       expect(Logger.errors.length, greaterThan(0));
-      expect(Logger.errors.any((e) => e.contains('не имеет типа')), isTrue);
+      expect(Logger.errors.any((e) => e.contains('has no type')), isTrue);
       
-      // Не должно быть предупреждений для suspicious_id_field
-      expect(Logger.warnings.any((w) => w.contains('идентификатор')), isFalse);
+      // Should not have warnings for suspicious_id_field
+      expect(Logger.warnings.any((w) => w.contains('identifier')), isFalse);
     });
 
-    test('проверка пустого объекта', () async {
+    test('empty object check', () async {
       final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_lint_empty_');
       final specFile = File('${tempDir.path}/swagger.json');
 
@@ -1404,10 +1404,10 @@ lint:
       );
 
       // Должно быть предупреждение о пустом объекте
-      expect(Logger.warnings.any((w) => w.contains('пустым объектом')), isTrue);
+      expect(Logger.warnings.any((w) => w.contains('empty object')), isTrue);
     });
 
-    test('проверка массива без items', () async {
+    test('array without items check', () async {
       final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_lint_array_');
       final specFile = File('${tempDir.path}/swagger.json');
 
@@ -1441,7 +1441,7 @@ lint:
       expect(Logger.warnings.any((w) => w.contains('array') && w.contains('items')), isTrue);
     });
 
-    test('проверка пустого enum', () async {
+    test('empty enum check', () async {
       final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_lint_empty_enum_');
       final specFile = File('${tempDir.path}/swagger.json');
 
@@ -1467,10 +1467,10 @@ lint:
       );
 
       // Должно быть предупреждение о пустом enum
-      expect(Logger.warnings.any((w) => w.contains('Enum') && w.contains('не содержит значений')), isTrue);
+      expect(Logger.warnings.any((w) => w.contains('Enum') && w.contains('contains no values')), isTrue);
     });
 
-    test('проверка несогласованности типов', () async {
+    test('type inconsistency check', () async {
       final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_lint_inconsistency_');
       final specFile = File('${tempDir.path}/swagger.json');
 
@@ -1505,8 +1505,8 @@ lint:
     });
   });
 
-  group('Улучшенная поддержка OpenAPI (0.2.1)', () {
-    test('обрабатывает вложенные allOf комбинации', () async {
+  group('Improved OpenAPI support (0.2.1)', () {
+    test('handles nested allOf combinations', () async {
       final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_nested_allof_');
       final specFile = File('${tempDir.path}/openapi.json');
 
@@ -1566,7 +1566,7 @@ lint:
       expect(content, contains('final String name;')); // Из User
     });
 
-    test('обрабатывает множественное наследование через allOf', () async {
+    test('handles multiple inheritance through allOf', () async {
       final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_multiple_allof_');
       final specFile = File('${tempDir.path}/openapi.json');
 
@@ -1632,7 +1632,7 @@ lint:
       expect(content, contains('final num price;')); // Из Product
     });
 
-    test('генерирует безопасную обёртку для oneOf', () async {
+    test('generates safe wrapper for oneOf', () async {
       final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_oneof_');
       final specFile = File('${tempDir.path}/openapi.json');
 
@@ -1675,7 +1675,7 @@ lint:
 
       // Ищем файл для схемы Value (oneOf)
       final valueFiles = result.generatedFiles.where((f) => f.endsWith('value.dart')).toList();
-      expect(valueFiles, isNotEmpty, reason: 'Должен быть сгенерирован файл для схемы Value');
+      expect(valueFiles, isNotEmpty, reason: 'Should generate file for Value schema');
       
       // Может быть несколько файлов (StringValue, NumberValue, Value)
       // Находим файл для схемы Value (oneOf)
@@ -1688,7 +1688,7 @@ lint:
         }
       }
       
-      expect(valueFile, isNotNull, reason: 'Должен быть найден файл с классом Value (oneOf)');
+      expect(valueFile, isNotNull, reason: 'Should find file with Value class (oneOf)');
       final content = await valueFile!.readAsString();
 
       // Должна быть сгенерирована безопасная обёртка
@@ -1701,7 +1701,7 @@ lint:
       expect(Logger.warnings.any((w) => w.contains('oneOf') || w.contains('anyOf')), isFalse);
     });
 
-    test('генерирует безопасную обёртку для anyOf', () async {
+    test('generates safe wrapper for anyOf', () async {
       final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_anyof_');
       final specFile = File('${tempDir.path}/openapi.json');
 
@@ -1745,7 +1745,7 @@ lint:
       expect(content, contains('factory Error.fromJson(dynamic json)'));
     });
 
-    test('обрабатывает oneOf с discriminator и логирует информацию', () async {
+    test('handles oneOf with discriminator and logs information', () async {
       final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_oneof_discriminator_');
       final specFile = File('${tempDir.path}/openapi.json');
 
@@ -1798,7 +1798,7 @@ lint:
       expect(content, contains('class Pet'));
     });
 
-    test('обрабатывает циклические зависимости в allOf', () async {
+    test('handles circular dependencies in allOf', () async {
       final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_allof_cycle_');
       final specFile = File('${tempDir.path}/openapi.json');
 
@@ -1863,8 +1863,8 @@ lint:
     });
   });
 
-  group('Инкрементальная генерация (0.5.1)', () {
-    test('генерирует все схемы при первом запуске', () async {
+  group('Incremental generation (0.5.1)', () {
+    test('generates all schemas on first run', () async {
       final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_cache_');
       final specFile = File('${tempDir.path}/openapi.json');
 
@@ -1910,7 +1910,7 @@ lint:
       expect(await cacheFile.exists(), isTrue);
     });
 
-    test('генерирует только изменённые схемы при втором запуске', () async {
+    test('generates only changed schemas on second run', () async {
       final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_cache2_');
       final specFile = File('${tempDir.path}/openapi.json');
 
@@ -1996,7 +1996,7 @@ lint:
       expect(userContent, contains('final String email;'));
     });
 
-    test('удаляет файлы для удалённых схем', () async {
+    test('deletes files for removed schemas', () async {
       final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_cache3_');
       final specFile = File('${tempDir.path}/openapi.json');
 
@@ -2073,7 +2073,7 @@ lint:
       expect(await userFile.exists(), isTrue);
     });
 
-    test('добавляет новые схемы при инкрементальной генерации', () async {
+    test('adds new schemas during incremental generation', () async {
       final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_cache4_');
       final specFile = File('${tempDir.path}/openapi.json');
 
@@ -2147,7 +2147,7 @@ lint:
       expect(await productFile.exists(), isTrue);
     });
 
-    test('работает без кэша (первый запуск)', () async {
+    test('works without cache (first run)', () async {
       final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_cache5_');
       final specFile = File('${tempDir.path}/openapi.json');
 
@@ -2184,8 +2184,8 @@ lint:
     });
   });
 
-  group('Подключаемые стили (0.3.1)', () {
-    test('можно зарегистрировать и использовать кастомный стиль', () async {
+  group('Pluggable styles (0.3.1)', () {
+    test('can register and use custom style', () async {
       final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_custom_style_');
       final specFile = File('${tempDir.path}/openapi.json');
 
@@ -2239,7 +2239,7 @@ lint:
       }
     });
 
-    test('выбрасывает ошибку при использовании незарегистрированного стиля', () async {
+    test('throws error when using unregistered style', () async {
       final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_unregistered_style_');
       final specFile = File('${tempDir.path}/openapi.json');
 
@@ -2275,12 +2275,12 @@ lint:
         throwsA(isA<ArgumentError>().having(
           (e) => e.message,
           'message',
-          contains('не зарегистрирован'),
+          contains('not registered'),
         )),
       );
     });
 
-    test('поддерживает кастомный стиль через CLI', () async {
+    test('supports custom style via CLI', () async {
       final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_cli_custom_style_');
       final specFile = File('${tempDir.path}/openapi.json');
 
@@ -2325,7 +2325,7 @@ lint:
       }
     });
 
-    test('поддерживает кастомный стиль через конфиг файл', () async {
+    test('supports custom style via config file', () async {
       final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_config_custom_style_');
       final specFile = File('${tempDir.path}/openapi.json');
       final configFile = File('${tempDir.path}/dart_swagger_to_models.yaml');
@@ -2376,7 +2376,7 @@ defaultStyle: config_test_style
   });
 
   group('build_runner integration (0.4.1)', () {
-    test('Builder доступен для использования в build.yaml', () {
+    test('Builder is available for use in build.yaml', () {
       // Builder должен быть импортирован напрямую из src/build/swagger_builder.dart
       // чтобы избежать загрузки dart:mirrors при обычном использовании библиотеки
       // Фактическая функциональность Builder покрыта основными тестами генератора
@@ -2384,7 +2384,7 @@ defaultStyle: config_test_style
       // dart_swagger_to_models|swaggerBuilder
       expect(true, isTrue); // Placeholder test - Builder functionality is covered by main generator tests
     });
-  }, skip: 'Тесты Builder требуют build пакет, который использует dart:mirrors. '
-      'Функциональность Builder покрыта основными тестами генератора. '
-      'Для использования Builder импортируйте: import \'package:dart_swagger_to_models/src/build/swagger_builder.dart\';');
+  }, skip: 'Builder tests require build package which uses dart:mirrors. '
+      'Builder functionality is covered by main generator tests. '
+      'To use Builder import: import \'package:dart_swagger_to_models/src/build/swagger_builder.dart\';');
 }
