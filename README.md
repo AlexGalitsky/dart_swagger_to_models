@@ -54,6 +54,25 @@ Models are generated from `definitions` / `components.schemas` with
 
 You can create a `dart_swagger_to_models.yaml` file in your project root to configure the generator:
 
+**Spec linting:**
+
+The generator can validate your Swagger/OpenAPI specifications and report issues:
+
+```yaml
+lint:
+  enabled: true
+  rules:
+    missing_type: error          # Field without type and without $ref
+    suspicious_id_field: warning # ID field without required and nullable
+    missing_ref_target: error    # Missing $ref target
+    type_inconsistency: warning  # Type inconsistency
+    empty_object: warning        # Empty object
+    array_without_items: warning # Array without items
+    empty_enum: warning          # Enum without values
+```
+
+Each rule can be set to `off`, `warning`, or `error`.
+
 ```yaml
 # Global options
 defaultStyle: json_serializable

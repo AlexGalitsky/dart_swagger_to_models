@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 import 'package:yaml/yaml.dart';
 
+import '../core/lint_rules.dart';
 import '../core/types.dart';
 import 'config.dart';
 
@@ -54,6 +55,13 @@ class ConfigLoader {
       final projectDir = yaml['projectDir'] as String?;
       final useJsonKey = yaml['useJsonKey'] as bool?;
 
+      // Парсим lint конфигурацию
+      LintConfig? lintConfig;
+      final lint = yaml['lint'] as Map?;
+      if (lint != null) {
+        lintConfig = _parseLintConfig(lint);
+      }
+
       // Парсим переопределения для схем
       final schemaOverrides = <String, SchemaOverride>{};
       final schemas = yaml['schemas'] as Map?;
@@ -70,6 +78,7 @@ class ConfigLoader {
         outputDir: outputDir,
         projectDir: projectDir,
         useJsonKey: useJsonKey,
+        lint: lintConfig,
         schemaOverrides: schemaOverrides,
       );
     } catch (e) {
@@ -118,5 +127,76 @@ class ConfigLoader {
       typeMapping: typeMappingMap.isNotEmpty ? typeMappingMap : null,
       useJsonKey: useJsonKey,
     );
+  }
+
+  /// Парсит конфигурацию lint правил.
+  static LintConfig _parseLintConfig(Map lintData) {
+    final rules = <LintRuleId, LintRuleConfig>{};
+
+    // Если указан 'enabled: false', отключаем все правила
+    final enabled = lintData['enabled'] as bool? ?? true;
+    if (!enabled) {
+      return LintConfig.disabled();
+    }
+
+    // Парсим правила
+    final rulesData = lintData['rules'] as Map?;
+    if (rulesData != null) {
+      rulesData.forEach((ruleIdStr, ruleConfig) {
+        if (ruleConfig is String) {
+          // Простой формат: "missing_type: warning"
+          final ruleId = _parseRuleId(ruleIdStr.toString());
+          final severity = LintRuleConfig.parseSeverity(ruleConfig);
+          rules[ruleId] = LintRuleConfig(id: ruleId, severity: severity);
+        } else if (ruleConfig is Map) {
+          // Расширенный формат: "missing_type: { severity: warning }"
+          final ruleId = _parseRuleId(ruleIdStr.toString());
+          final severityStr = ruleConfig['severity'] as String? ?? 'warning';
+          final severity = LintRuleConfig.parseSeverity(severityStr);
+          rules[ruleId] = LintRuleConfig(id: ruleId, severity: severity);
+        }
+      });
+    }
+
+    // Создаём конфигурацию по умолчанию и применяем переопределения
+    final defaultConfig = LintConfig.defaultConfig();
+    if (rules.isEmpty) {
+      return defaultConfig;
+    }
+
+    return LintConfig(
+      rules: {
+        ...defaultConfig.rules,
+        ...rules,
+      },
+    );
+  }
+
+  static LintRuleId _parseRuleId(String str) {
+    switch (str.toLowerCase()) {
+      case 'missing_type':
+      case 'missing-type':
+        return LintRuleId.missingType;
+      case 'suspicious_id_field':
+      case 'suspicious-id-field':
+        return LintRuleId.suspiciousIdField;
+      case 'missing_ref_target':
+      case 'missing-ref-target':
+        return LintRuleId.missingRefTarget;
+      case 'type_inconsistency':
+      case 'type-inconsistency':
+        return LintRuleId.typeInconsistency;
+      case 'empty_object':
+      case 'empty-object':
+        return LintRuleId.emptyObject;
+      case 'array_without_items':
+      case 'array-without-items':
+        return LintRuleId.arrayWithoutItems;
+      case 'empty_enum':
+      case 'empty-enum':
+        return LintRuleId.emptyEnum;
+      default:
+        throw Exception('Неизвестное lint правило: $str');
+    }
   }
 }

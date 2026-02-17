@@ -6,6 +6,7 @@ import 'package:path/path.dart' as p;
 import 'package:yaml/yaml.dart';
 
 import 'src/config/config.dart';
+import 'src/core/lint_rules.dart';
 import 'src/core/logger.dart';
 import 'src/core/types.dart';
 import 'src/generators/class_generator_strategy.dart';
@@ -156,7 +157,8 @@ class SwaggerToDartGenerator {
     Logger.verbose('Найдено существующих файлов: ${existingFiles.length}');
 
     // Проверяем схемы на подозрительные конструкции
-    _validateSchemas(schemas, context);
+    final lintConfig = config?.lint ?? LintConfig.defaultConfig();
+    _validateSchemas(schemas, context, lintConfig);
 
     // Сначала генерируем enum'ы
     final enumSchemas = <String, Map<String, dynamic>>{};
@@ -273,7 +275,7 @@ class SwaggerToDartGenerator {
     }
 
     // Проверяем отсутствующие $ref после генерации
-    _checkMissingRefs(schemas, context);
+    _checkMissingRefs(schemas, context, lintConfig);
 
     return GenerationResult(
       outputDirectory: outputDir,
@@ -968,9 +970,14 @@ class $className {
         base = 'bool';
         break;
       case 'array':
-        final items = (schema['items'] ?? {}) as Map<String, dynamic>;
-        final itemType = _dartTypeForSchema(items, context, required: true);
-        base = 'List<$itemType>';
+        final items = schema['items'];
+        if (items != null && items is Map<String, dynamic>) {
+          final itemType = _dartTypeForSchema(items, context, required: true);
+          base = 'List<$itemType>';
+        } else {
+          // Массив без items - генерируем List<dynamic>
+          base = 'List<dynamic>';
+        }
         break;
       case 'object':
         // Проверяем, есть ли additionalProperties
@@ -1056,12 +1063,19 @@ class $className {
 
     switch (type) {
       case 'array':
-        final items = (schema['items'] ?? {}) as Map<String, dynamic>;
-        final itemExpr = _fromJsonExpression('e', items, context, isRequired: true);
-        if (isNonNullable) {
-          return '($source as List<dynamic>).map((e) => $itemExpr).toList()';
+        final items = schema['items'];
+        if (items != null && items is Map<String, dynamic>) {
+          final itemExpr = _fromJsonExpression('e', items, context, isRequired: true);
+          if (isNonNullable) {
+            return '($source as List<dynamic>).map((e) => $itemExpr).toList()';
+          }
+          return '$source == null ? null : ($source as List<dynamic>).map((e) => $itemExpr).toList()';
+        } else {
+          if (isNonNullable) {
+            return '$source as List<dynamic>';
+          }
+          return '$source as List<dynamic>?';
         }
-        return '$source == null ? null : ($source as List<dynamic>).map((e) => $itemExpr).toList()';
       case 'string':
         if (format == 'date-time' || format == 'date') {
           if (isNonNullable) {
@@ -1133,9 +1147,13 @@ class $className {
 
     switch (type) {
       case 'array':
-        final items = (schema['items'] ?? {}) as Map<String, dynamic>;
-        final inner = _toJsonExpression('e', items, context);
-        return '$fieldName?.map((e) => $inner).toList()';
+        final items = schema['items'];
+        if (items != null && items is Map<String, dynamic>) {
+          final inner = _toJsonExpression('e', items, context);
+          return '$fieldName?.map((e) => $inner).toList()';
+        } else {
+          return '$fieldName';
+        }
       case 'string':
         if (format == 'date-time' || format == 'date') {
           return '$fieldName?.toIso8601String()';
@@ -1168,47 +1186,98 @@ class $className {
   static void _validateSchemas(
     Map<String, dynamic> schemas,
     GenerationContext context,
+    LintConfig lintConfig,
   ) {
     schemas.forEach((schemaName, schemaRaw) {
       final schema = (schemaRaw ?? {}) as Map<String, dynamic>;
       
-      // Пропускаем enum'ы
-      if (context.isEnum(schema)) return;
+      // Проверка enum'ов (включая пустые)
+      final enumValues = schema['enum'] as List?;
+      if (enumValues != null) {
+        _validateEnum(schema, schemaName, lintConfig);
+        // Если это enum, не проверяем как обычную схему
+        if (context.isEnum(schema)) {
+          return;
+        }
+      }
+
+      // Проверка пустого объекта (только для не-enum схем)
+      if (lintConfig.isEnabled(LintRuleId.emptyObject) && !context.isEnum(schema)) {
+        final properties = schema['properties'] as Map<String, dynamic>? ?? {};
+        final additionalProps = schema['additionalProperties'];
+        if (properties.isEmpty && (additionalProps == null || additionalProps == false)) {
+          _reportLintIssue(
+            LintRuleId.emptyObject,
+            lintConfig,
+            'Схема "$schemaName" является пустым объектом (нет properties и additionalProperties).',
+          );
+        }
+      }
 
       final properties = schema['properties'] as Map<String, dynamic>? ?? {};
       properties.forEach((propName, propSchemaRaw) {
         final propSchema = (propSchemaRaw ?? {}) as Map<String, dynamic>;
         
         // Проверка на отсутствие type
-        if (!propSchema.containsKey('type') && !propSchema.containsKey(r'$ref')) {
-          Logger.warning(
-            'Поле "$propName" в схеме "$schemaName" не имеет типа и не является ссылкой (\$ref). '
-            'Будет сгенерирован тип dynamic.',
-          );
+        if (lintConfig.isEnabled(LintRuleId.missingType)) {
+          if (!propSchema.containsKey('type') && !propSchema.containsKey(r'$ref')) {
+            _reportLintIssue(
+              LintRuleId.missingType,
+              lintConfig,
+              'Поле "$propName" в схеме "$schemaName" не имеет типа и не является ссылкой (\$ref). '
+              'Будет сгенерирован тип dynamic.',
+            );
+          }
         }
 
         // Проверка на подозрительные поля (например, id без nullable и без required)
-        if (propName == 'id' || propName.endsWith('_id') || propName.endsWith('Id')) {
-          final isNullable = propSchema['nullable'] as bool? ?? false;
-          final isRequired = (schema['required'] as List?)?.contains(propName) ?? false;
-          
-          if (!isNullable && !isRequired) {
-            Logger.warning(
-              'Поле "$propName" в схеме "$schemaName" похоже на идентификатор, '
-              'но не помечено как required и не nullable. '
-              'Возможно, стоит добавить required: true или nullable: true.',
-            );
+        if (lintConfig.isEnabled(LintRuleId.suspiciousIdField)) {
+          if (propName == 'id' || propName.endsWith('_id') || propName.endsWith('Id')) {
+            final isNullable = propSchema['nullable'] as bool? ?? false;
+            final isRequired = (schema['required'] as List?)?.contains(propName) ?? false;
+            
+            if (!isNullable && !isRequired) {
+              _reportLintIssue(
+                LintRuleId.suspiciousIdField,
+                lintConfig,
+                'Поле "$propName" в схеме "$schemaName" похоже на идентификатор, '
+                'но не помечено как required и не nullable. '
+                'Возможно, стоит добавить required: true или nullable: true.',
+              );
+            }
           }
         }
 
         // Проверка на $ref
         final propRef = propSchema[r'$ref'] as String?;
         if (propRef != null) {
-          final refSchema = context.resolveRef(propRef, context: schemaName);
-          if (refSchema == null) {
-            Logger.error(
-              'Не найдена схема для ссылки "$propRef" в поле "$propName" схемы "$schemaName". '
-              'Проверьте, что схема определена в спецификации.',
+          if (lintConfig.isEnabled(LintRuleId.missingRefTarget)) {
+            final refSchema = context.resolveRef(propRef, context: schemaName);
+            if (refSchema == null) {
+              _reportLintIssue(
+                LintRuleId.missingRefTarget,
+                lintConfig,
+                'Не найдена схема для ссылки "$propRef" в поле "$propName" схемы "$schemaName". '
+                'Проверьте, что схема определена в спецификации.',
+              );
+            }
+          }
+        }
+
+        // Проверка на несогласованность типов
+        if (lintConfig.isEnabled(LintRuleId.typeInconsistency)) {
+          _checkTypeInconsistency(propSchema, propName, schemaName, lintConfig);
+        }
+
+        // Проверка массива без items
+        if (lintConfig.isEnabled(LintRuleId.arrayWithoutItems)) {
+          final propType = propSchema['type'] as String?;
+          if (propType == 'array' && !propSchema.containsKey('items')) {
+            _reportLintIssue(
+              LintRuleId.arrayWithoutItems,
+              lintConfig,
+              'Поле "$propName" в схеме "$schemaName" имеет тип array, но не содержит items. '
+              'Будет сгенерирован тип List<dynamic>.',
             );
           }
         }
@@ -1216,11 +1285,93 @@ class $className {
     });
   }
 
+  /// Проверяет enum на проблемы.
+  static void _validateEnum(
+    Map<String, dynamic> schema,
+    String schemaName,
+    LintConfig lintConfig,
+  ) {
+    if (lintConfig.isEnabled(LintRuleId.emptyEnum)) {
+      final enumValues = schema['enum'] as List?;
+      if (enumValues == null || enumValues.isEmpty) {
+        _reportLintIssue(
+          LintRuleId.emptyEnum,
+          lintConfig,
+          'Enum "$schemaName" не содержит значений.',
+        );
+      }
+    }
+  }
+
+  /// Проверяет несогласованность типов.
+  static void _checkTypeInconsistency(
+    Map<String, dynamic> propSchema,
+    String propName,
+    String schemaName,
+    LintConfig lintConfig,
+  ) {
+    final propType = propSchema['type'] as String?;
+    final format = propSchema['format'] as String?;
+    final isNullable = propSchema['nullable'] as bool? ?? false;
+
+    // Проверка: type: string, format: date-time, но не nullable
+    // Обычно date-time может быть null в некоторых случаях
+    if (propType == 'string' && format == 'date-time' && !isNullable) {
+      // Это не обязательно ошибка, но может быть предупреждением
+      // Пропускаем, так как это нормальная практика
+    }
+
+    // Проверка: type: integer, но format указан (обычно format используется для string)
+    if (propType == 'integer' && format != null) {
+      _reportLintIssue(
+        LintRuleId.typeInconsistency,
+        lintConfig,
+        'Поле "$propName" в схеме "$schemaName" имеет тип integer, но указан format "$format". '
+        'Format обычно используется только для типа string.',
+      );
+    }
+
+    // Проверка: type: number, но format указан (обычно format используется для string)
+    if (propType == 'number' && format != null && format != 'float' && format != 'double') {
+      _reportLintIssue(
+        LintRuleId.typeInconsistency,
+        lintConfig,
+        'Поле "$propName" в схеме "$schemaName" имеет тип number, но указан format "$format". '
+        'Для number допустимы только format: float или double.',
+      );
+    }
+  }
+
+  /// Сообщает о проблеме lint с учётом уровня серьёзности.
+  static void _reportLintIssue(
+    LintRuleId ruleId,
+    LintConfig lintConfig,
+    String message,
+  ) {
+    final severity = lintConfig.getSeverity(ruleId);
+    switch (severity) {
+      case LintSeverity.off:
+        // Не сообщаем
+        break;
+      case LintSeverity.warning:
+        Logger.warning(message);
+        break;
+      case LintSeverity.error:
+        Logger.error(message);
+        break;
+    }
+  }
+
   /// Проверяет отсутствующие $ref после генерации.
   static void _checkMissingRefs(
     Map<String, dynamic> schemas,
     GenerationContext context,
+    LintConfig lintConfig,
   ) {
+    if (!lintConfig.isEnabled(LintRuleId.missingRefTarget)) {
+      return;
+    }
+
     final missingRefs = <String>{};
     
     void checkSchema(Map<String, dynamic> schema, String? parentName) {
@@ -1230,7 +1381,9 @@ class $className {
         if (refSchema == null && !missingRefs.contains(schemaRef)) {
           missingRefs.add(schemaRef);
           final contextMsg = parentName != null ? ' (в схеме "$parentName")' : '';
-          Logger.error(
+          _reportLintIssue(
+            LintRuleId.missingRefTarget,
+            lintConfig,
             'Не найдена схема для ссылки "$schemaRef"$contextMsg. '
             'Проверьте, что схема определена в спецификации.',
           );

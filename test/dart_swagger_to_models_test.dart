@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:dart_swagger_to_models/dart_swagger_to_models.dart';
 import 'package:dart_swagger_to_models/src/config/config_loader.dart';
+import 'package:dart_swagger_to_models/src/core/logger.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -1257,6 +1258,248 @@ schemas:
       
       // Order не должен иметь @JsonKey (глобальная опция false)
       expect(orderContent, isNot(contains("@JsonKey(name: 'order_id')")));
+    });
+  });
+
+  group('Подсказки по качеству спецификаций (spec linting)', () {
+    test('lint правила работают по умолчанию', () async {
+      final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_lint_');
+      final specFile = File('${tempDir.path}/swagger.json');
+
+      final spec = <String, dynamic>{
+        'swagger': '2.0',
+        'info': {'title': 'Test', 'version': '1.0.0'},
+        'paths': <String, dynamic>{},
+        'definitions': <String, dynamic>{
+          'User': {
+            'type': 'object',
+            'properties': {
+              'name': {}, // Нет типа
+              'id': {'type': 'integer'}, // Подозрительное id поле
+            },
+          },
+        },
+      };
+
+      await specFile.writeAsString(jsonEncode(spec));
+
+      final result = await SwaggerToDartGenerator.generateModels(
+        input: specFile.path,
+        outputDir: '${tempDir.path}/models',
+        projectDir: tempDir.path,
+      );
+
+      // Должны быть предупреждения
+      expect(Logger.warnings.length, greaterThan(0));
+    });
+
+    test('lint правила можно отключить через конфиг', () async {
+      final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_lint_disabled_');
+      final configFile = File('${tempDir.path}/dart_swagger_to_models.yaml');
+      final specFile = File('${tempDir.path}/swagger.json');
+
+      await configFile.writeAsString('''
+lint:
+  enabled: false
+''');
+
+      final spec = <String, dynamic>{
+        'swagger': '2.0',
+        'info': {'title': 'Test', 'version': '1.0.0'},
+        'paths': <String, dynamic>{},
+        'definitions': <String, dynamic>{
+          'User': {
+            'type': 'object',
+            'properties': {
+              'name': {}, // Нет типа - должно быть предупреждение, но отключено
+            },
+          },
+        },
+      };
+
+      await specFile.writeAsString(jsonEncode(spec));
+
+      Logger.clear();
+      await SwaggerToDartGenerator.generateModels(
+        input: specFile.path,
+        outputDir: '${tempDir.path}/models',
+        projectDir: tempDir.path,
+        config: await ConfigLoader.loadConfig(null, tempDir.path),
+      );
+
+      // Не должно быть предупреждений, так как lint отключен
+      expect(Logger.warnings.length, 0);
+    });
+
+    test('lint правила можно настроить индивидуально', () async {
+      final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_lint_custom_');
+      final configFile = File('${tempDir.path}/dart_swagger_to_models.yaml');
+      final specFile = File('${tempDir.path}/swagger.json');
+
+      await configFile.writeAsString('''
+lint:
+  rules:
+    missing_type: error
+    suspicious_id_field: off
+''');
+
+      final spec = <String, dynamic>{
+        'swagger': '2.0',
+        'info': {'title': 'Test', 'version': '1.0.0'},
+        'paths': <String, dynamic>{},
+        'definitions': <String, dynamic>{
+          'User': {
+            'type': 'object',
+            'properties': {
+              'name': {}, // Нет типа - должно быть ошибка
+              'id': {'type': 'integer'}, // Подозрительное id - должно быть отключено
+            },
+          },
+        },
+      };
+
+      await specFile.writeAsString(jsonEncode(spec));
+
+      Logger.clear();
+      await SwaggerToDartGenerator.generateModels(
+        input: specFile.path,
+        outputDir: '${tempDir.path}/models',
+        projectDir: tempDir.path,
+        config: await ConfigLoader.loadConfig(null, tempDir.path),
+      );
+
+      // Должна быть ошибка для missing_type
+      expect(Logger.errors.length, greaterThan(0));
+      expect(Logger.errors.any((e) => e.contains('не имеет типа')), isTrue);
+      
+      // Не должно быть предупреждений для suspicious_id_field
+      expect(Logger.warnings.any((w) => w.contains('идентификатор')), isFalse);
+    });
+
+    test('проверка пустого объекта', () async {
+      final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_lint_empty_');
+      final specFile = File('${tempDir.path}/swagger.json');
+
+      final spec = <String, dynamic>{
+        'swagger': '2.0',
+        'info': {'title': 'Test', 'version': '1.0.0'},
+        'paths': <String, dynamic>{},
+        'definitions': <String, dynamic>{
+          'EmptySchema': {
+            'type': 'object',
+            'properties': {},
+          },
+        },
+      };
+
+      await specFile.writeAsString(jsonEncode(spec));
+
+      Logger.clear();
+      await SwaggerToDartGenerator.generateModels(
+        input: specFile.path,
+        outputDir: '${tempDir.path}/models',
+        projectDir: tempDir.path,
+      );
+
+      // Должно быть предупреждение о пустом объекте
+      expect(Logger.warnings.any((w) => w.contains('пустым объектом')), isTrue);
+    });
+
+    test('проверка массива без items', () async {
+      final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_lint_array_');
+      final specFile = File('${tempDir.path}/swagger.json');
+
+      final spec = <String, dynamic>{
+        'swagger': '2.0',
+        'info': {'title': 'Test', 'version': '1.0.0'},
+        'paths': <String, dynamic>{},
+        'definitions': <String, dynamic>{
+          'User': {
+            'type': 'object',
+            'properties': {
+              'tags': {
+                'type': 'array',
+                // Нет items
+              },
+            },
+          },
+        },
+      };
+
+      await specFile.writeAsString(jsonEncode(spec));
+
+      Logger.clear();
+      await SwaggerToDartGenerator.generateModels(
+        input: specFile.path,
+        outputDir: '${tempDir.path}/models',
+        projectDir: tempDir.path,
+      );
+
+      // Должно быть предупреждение о массиве без items
+      expect(Logger.warnings.any((w) => w.contains('array') && w.contains('items')), isTrue);
+    });
+
+    test('проверка пустого enum', () async {
+      final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_lint_empty_enum_');
+      final specFile = File('${tempDir.path}/swagger.json');
+
+      final spec = <String, dynamic>{
+        'swagger': '2.0',
+        'info': {'title': 'Test', 'version': '1.0.0'},
+        'paths': <String, dynamic>{},
+        'definitions': <String, dynamic>{
+          'EmptyEnum': {
+            'type': 'string',
+            'enum': <String>[],
+          },
+        },
+      };
+
+      await specFile.writeAsString(jsonEncode(spec));
+
+      Logger.clear();
+      await SwaggerToDartGenerator.generateModels(
+        input: specFile.path,
+        outputDir: '${tempDir.path}/models',
+        projectDir: tempDir.path,
+      );
+
+      // Должно быть предупреждение о пустом enum
+      expect(Logger.warnings.any((w) => w.contains('Enum') && w.contains('не содержит значений')), isTrue);
+    });
+
+    test('проверка несогласованности типов', () async {
+      final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_lint_inconsistency_');
+      final specFile = File('${tempDir.path}/swagger.json');
+
+      final spec = <String, dynamic>{
+        'swagger': '2.0',
+        'info': {'title': 'Test', 'version': '1.0.0'},
+        'paths': <String, dynamic>{},
+        'definitions': <String, dynamic>{
+          'User': {
+            'type': 'object',
+            'properties': {
+              'count': {
+                'type': 'integer',
+                'format': 'date-time', // Несогласованность: format для integer
+              },
+            },
+          },
+        },
+      };
+
+      await specFile.writeAsString(jsonEncode(spec));
+
+      Logger.clear();
+      await SwaggerToDartGenerator.generateModels(
+        input: specFile.path,
+        outputDir: '${tempDir.path}/models',
+        projectDir: tempDir.path,
+      );
+
+      // Должно быть предупреждение о несогласованности типов
+      expect(Logger.warnings.any((w) => w.contains('integer') && w.contains('format')), isTrue);
     });
   });
 }

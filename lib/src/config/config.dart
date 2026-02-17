@@ -1,3 +1,4 @@
+import '../core/lint_rules.dart';
 import '../core/types.dart';
 
 /// Конфигурация генератора.
@@ -14,6 +15,9 @@ class Config {
   /// Использовать @JsonKey для полей с snake_case JSON-ключами.
   final bool? useJsonKey;
 
+  /// Конфигурация lint правил.
+  final LintConfig? lint;
+
   /// Переопределения для отдельных схем.
   final Map<String, SchemaOverride> schemaOverrides;
 
@@ -22,6 +26,7 @@ class Config {
     this.outputDir,
     this.projectDir,
     this.useJsonKey,
+    this.lint,
     Map<String, SchemaOverride>? schemaOverrides,
   }) : schemaOverrides = schemaOverrides ?? {};
 
@@ -35,6 +40,7 @@ class Config {
       outputDir: other.outputDir ?? outputDir,
       projectDir: other.projectDir ?? projectDir,
       useJsonKey: other.useJsonKey ?? useJsonKey,
+      lint: other.lint ?? lint,
       schemaOverrides: {
         ...schemaOverrides,
         ...other.schemaOverrides,

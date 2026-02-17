@@ -54,6 +54,25 @@ dart run dart_swagger_to_models:dart_swagger_to_models \
 
 Вы можете создать файл `dart_swagger_to_models.yaml` в корне проекта для настройки генератора:
 
+**Подсказки по качеству спецификаций (spec linting):**
+
+Генератор может валидировать ваши Swagger/OpenAPI спецификации и сообщать о проблемах:
+
+```yaml
+lint:
+  enabled: true
+  rules:
+    missing_type: error          # Поле без типа и без $ref
+    suspicious_id_field: warning # ID поле без required и nullable
+    missing_ref_target: error    # Отсутствующая цель для $ref
+    type_inconsistency: warning  # Несогласованность типов
+    empty_object: warning        # Пустой объект
+    array_without_items: warning # Массив без items
+    empty_enum: warning          # Enum без значений
+```
+
+Каждое правило может быть установлено в `off`, `warning` или `error`.
+
 ```yaml
 # Глобальные опции
 defaultStyle: json_serializable
