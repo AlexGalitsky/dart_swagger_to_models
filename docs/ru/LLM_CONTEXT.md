@@ -31,6 +31,9 @@
       замена кода **только** между
       `/*SWAGGER-TO-DART: Fields start*/` и `/*SWAGGER-TO-DART: Fields stop*/`.
   - Использует паттерн Strategy через `GeneratorFactory`.
+  - Валидирует схемы (`_validateSchemas`) и проверяет отсутствующие цели для `$ref` (`_checkMissingRefs`).
+  - Собирает зависимости для генерации импортов (`_collectDependencies`, `_generateImportsForDependencies`).
+  - Логирует прогресс и ошибки через класс `Logger`.
 
 - **`lib/src/generators/*.dart`**
   - `class_generator_strategy.dart`:
@@ -48,23 +51,35 @@
 
 - **CLI-вход**: `bin/dart_swagger_to_models.dart`
   - Парсит опции (`--input`, `--output-dir`, `--library-name`, `--style`,
-    `--project-dir`, `--config`).
+    `--project-dir`, `--config`, `--verbose`, `--quiet`, `--format`).
   - Загружает конфигурацию из `dart_swagger_to_models.yaml` (если существует).
+  - Устанавливает уровень логирования через `Logger.setLevel()` на основе флагов `--verbose`/`--quiet`.
   - Вызывает `SwaggerToDartGenerator.generateModels` с конфигурацией.
+  - Отображает сводку генерации и накопленные предупреждения/ошибки.
 
 - **Конфигурация**: `lib/src/config/*.dart`
   - `config.dart`: классы `Config` и `SchemaOverride`.
   - `config_loader.dart`: `ConfigLoader` для парсинга YAML конфигурационных файлов.
-  - Поддерживает глобальные опции (`defaultStyle`, `outputDir`, `projectDir`).
-  - Поддерживает переопределения для схем (`className`, `fieldNames`, `typeMapping`).
+  - Поддерживает глобальные опции (`defaultStyle`, `outputDir`, `projectDir`, `useJsonKey`).
+  - Поддерживает переопределения для схем (`className`, `fieldNames`, `typeMapping`, `useJsonKey`).
   - Приоритет: аргументы CLI > конфигурационный файл > значения по умолчанию.
+
+- **Логирование**: `lib/src/core/logger.dart`
+  - Класс `Logger` с уровнями логирования: `quiet`, `normal`, `verbose`.
+  - Методы: `verbose()`, `info()`, `warning()`, `error()`, `debug()`, `success()`.
+  - Накопление предупреждений и ошибок для последующего вывода сводки.
+  - Используется по всему генератору для понятных сообщений пользователю.
 
 - **Тесты**: `test/dart_swagger_to_models_test.dart`
   - E2E-тесты:
     - Swagger 2.0 и OpenAPI 3.0,
     - `nullable` поля, `allOf`, массивы, `additionalProperties`, `int` vs `num`,
     - все 3 стиля (plain, json_serializable, freezed),
-    - per-file режим и перегенерация по маркерам.
+    - per-file режим и перегенерация по маркерам,
+    - поддержка конфигурационного файла и разрешение приоритетов,
+    - генерация `@JsonKey` для snake_case JSON-ключей,
+    - генерация импортов между моделями,
+    - улучшения для enum (`x-enumNames`, `x-enum-varnames`).
 
 ### Важные инварианты / правила
 
@@ -133,6 +148,22 @@ dart run dart_swagger_to_models:dart_swagger_to_models \
 dart run dart_swagger_to_models:dart_swagger_to_models \
   --input api.yaml \
   --config dart_swagger_to_models.yaml
+```
+
+- С подробным логированием:
+
+```bash
+dart run dart_swagger_to_models:dart_swagger_to_models \
+  --input api.yaml \
+  --verbose
+```
+
+- Тихий режим (минимальный вывод):
+
+```bash
+dart run dart_swagger_to_models:dart_swagger_to_models \
+  --input api.yaml \
+  --quiet
 ```
 
 ### Рекомендации при изменении проекта (для LLM)

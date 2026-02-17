@@ -46,6 +46,8 @@ Models are generated from `definitions` / `components.schemas` with
   - `freezed` — immutable `@freezed` classes with `const factory` and `fromJson`.
 - **`--project-dir`**: project root directory for scanning Dart files (searching for existing model files, default: `.`).
 - **`--config`, `-c`**: path to configuration file (default: searches for `dart_swagger_to_models.yaml` in project root).
+- **`--verbose`, `-v`**: detailed output (includes debug information).
+- **`--quiet`, `-q`**: minimal output (only errors and critical messages).
 - **`--help`, `-h`**: show help.
 
 ### Configuration file

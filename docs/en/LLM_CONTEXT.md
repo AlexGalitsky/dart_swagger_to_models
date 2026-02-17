@@ -27,6 +27,9 @@ the project context.
     - `_updateExistingFileWithEnum` / `_updateExistingFileWithClass` — replace code **only** between
       `/*SWAGGER-TO-DART: Fields start*/` and `/*SWAGGER-TO-DART: Fields stop*/`.
   - Uses strategy pattern for class body generation via `GeneratorFactory`.
+  - Validates schemas (`_validateSchemas`) and checks for missing `$ref` targets (`_checkMissingRefs`).
+  - Collects dependencies for import generation (`_collectDependencies`, `_generateImportsForDependencies`).
+  - Logs progress and errors via `Logger` class.
 
 - **`lib/src/generators/*.dart`**
   - `class_generator_strategy.dart`:
@@ -43,16 +46,24 @@ the project context.
 
 - **CLI entrypoint**: `bin/dart_swagger_to_models.dart`
   - Parses options (`--input`, `--output-dir`, `--library-name`, `--style`,
-    `--project-dir`, `--config`).
+    `--project-dir`, `--config`, `--verbose`, `--quiet`, `--format`).
   - Loads configuration from `dart_swagger_to_models.yaml` (if exists).
+  - Sets up logging level via `Logger.setLevel()` based on `--verbose`/`--quiet` flags.
   - Calls `SwaggerToDartGenerator.generateModels` with config.
+  - Displays generation summary and accumulated warnings/errors.
 
 - **Configuration**: `lib/src/config/*.dart`
   - `config.dart`: `Config` and `SchemaOverride` classes.
   - `config_loader.dart`: `ConfigLoader` for parsing YAML config files.
-  - Supports global options (`defaultStyle`, `outputDir`, `projectDir`).
-  - Supports per-schema overrides (`className`, `fieldNames`, `typeMapping`).
+  - Supports global options (`defaultStyle`, `outputDir`, `projectDir`, `useJsonKey`).
+  - Supports per-schema overrides (`className`, `fieldNames`, `typeMapping`, `useJsonKey`).
   - Priority: CLI arguments > config file > defaults.
+
+- **Logging**: `lib/src/core/logger.dart`
+  - `Logger` class with log levels: `quiet`, `normal`, `verbose`.
+  - Methods: `verbose()`, `info()`, `warning()`, `error()`, `debug()`, `success()`.
+  - Accumulates warnings and errors for summary display.
+  - Used throughout the generator for user-friendly messages.
 
 - **Tests**: `test/dart_swagger_to_models_test.dart`
   - End-to-end tests for:
@@ -60,6 +71,10 @@ the project context.
     - `nullable` fields, `allOf`, arrays, `additionalProperties`, int vs num.
     - All 3 styles (plain, json_serializable, freezed).
     - Per-file mode and marker-based regeneration.
+    - Configuration file support and priority resolution.
+    - `@JsonKey` generation for snake_case JSON keys.
+    - Import generation between models.
+    - Enum improvements (`x-enumNames`, `x-enum-varnames`).
 
 ### Key invariants / rules
 
@@ -129,6 +144,22 @@ dart run dart_swagger_to_models:dart_swagger_to_models \
 dart run dart_swagger_to_models:dart_swagger_to_models \
   --input api.yaml \
   --config dart_swagger_to_models.yaml
+```
+
+- With verbose logging:
+
+```bash
+dart run dart_swagger_to_models:dart_swagger_to_models \
+  --input api.yaml \
+  --verbose
+```
+
+- Quiet mode (minimal output):
+
+```bash
+dart run dart_swagger_to_models:dart_swagger_to_models \
+  --input api.yaml \
+  --quiet
 ```
 
 ### When modifying this project (for LLMs)

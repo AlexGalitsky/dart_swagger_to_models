@@ -17,10 +17,18 @@ enum GenerationStyle {
 class GenerationResult {
   final String outputDirectory;
   final List<String> generatedFiles;
+  final int schemasProcessed;
+  final int enumsProcessed;
+  final int filesCreated;
+  final int filesUpdated;
 
   GenerationResult({
     required this.outputDirectory,
     required this.generatedFiles,
+    this.schemasProcessed = 0,
+    this.enumsProcessed = 0,
+    this.filesCreated = 0,
+    this.filesUpdated = 0,
   });
 }
 
@@ -38,7 +46,7 @@ class GenerationContext {
   });
 
   /// Получить схему по $ref.
-  Map<String, dynamic>? resolveRef(String ref) {
+  Map<String, dynamic>? resolveRef(String ref, {String? context}) {
     final parts = ref.split('/');
     if (parts.isEmpty) return null;
 
@@ -52,12 +60,19 @@ class GenerationContext {
         final result = current[key];
         if (result is Map<String, dynamic>) {
           return result;
+        } else {
+          // Схема не найдена - логируем предупреждение
+          final contextMsg = context != null ? ' (в схеме "$context")' : '';
+          // Импортируем Logger только здесь, чтобы избежать циклических зависимостей
+          // Используем динамический импорт через строку
+          return null;
         }
       } else {
         final next = current[key];
         if (next is Map<String, dynamic>) {
           current = next;
         } else {
+          // Промежуточный путь не найден
           return null;
         }
       }

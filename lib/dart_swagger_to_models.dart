@@ -6,6 +6,7 @@ import 'package:path/path.dart' as p;
 import 'package:yaml/yaml.dart';
 
 import 'src/config/config.dart';
+import 'src/core/logger.dart';
 import 'src/core/types.dart';
 import 'src/generators/class_generator_strategy.dart';
 import 'src/generators/generator_factory.dart';
@@ -134,17 +135,28 @@ class SwaggerToDartGenerator {
     required String projectDir,
     Config? config,
   }) async {
+    Logger.clear();
+    Logger.verbose('Начало генерации моделей');
+    Logger.verbose('Стиль: $style');
+    Logger.verbose('Выходная директория: $outputDir');
+
     final generatedFiles = <String>[];
     final outDir = Directory(outputDir);
     if (!await outDir.exists()) {
+      Logger.verbose('Создание выходной директории: $outputDir');
       await outDir.create(recursive: true);
     }
 
     // Сканируем проект для поиска существующих файлов с маркерами
+    Logger.verbose('Сканирование проекта для поиска существующих файлов...');
     final existingFiles = await _scanProjectForMarkers(
       projectDir,
       outputDir,
     );
+    Logger.verbose('Найдено существующих файлов: ${existingFiles.length}');
+
+    // Проверяем схемы на подозрительные конструкции
+    _validateSchemas(schemas, context);
 
     // Сначала генерируем enum'ы
     final enumSchemas = <String, Map<String, dynamic>>{};
@@ -155,40 +167,14 @@ class SwaggerToDartGenerator {
       }
     });
 
+    Logger.verbose('Найдено enum схем: ${enumSchemas.length}');
+
+    int filesCreated = 0;
+    int filesUpdated = 0;
+
     // Генерируем enum'ы в отдельные файлы
     for (final entry in enumSchemas.entries) {
-      final override = config?.schemaOverrides[entry.key];
-      final modelName = override?.className ?? _toPascalCase(entry.key);
-      final fileName = _toSnakeCase(entry.key);
-      final filePath = p.join(outputDir, '$fileName.dart');
-      final existingContent = existingFiles[modelName];
-
-      final fileContent = existingContent != null
-          ? _updateExistingFileWithEnum(
-              existingContent,
-              entry.key,
-              entry.value,
-              context,
-              style,
-            )
-          : _createNewFileWithEnum(
-              entry.key,
-              entry.value,
-              context,
-              style,
-              fileName,
-            );
-
-      final file = File(filePath);
-      await file.writeAsString(fileContent);
-      generatedFiles.add(filePath);
-      context.generatedEnums.add(modelName);
-    }
-
-    // Затем генерируем классы в отдельные файлы
-    for (final entry in schemas.entries) {
-      final schemaMap = (entry.value ?? {}) as Map<String, dynamic>;
-      if (!context.isEnum(schemaMap)) {
+      try {
         final override = config?.schemaOverrides[entry.key];
         final modelName = override?.className ?? _toPascalCase(entry.key);
         final fileName = _toSnakeCase(entry.key);
@@ -196,37 +182,106 @@ class SwaggerToDartGenerator {
         final existingContent = existingFiles[modelName];
 
         final fileContent = existingContent != null
-            ? _updateExistingFileWithClass(
+            ? _updateExistingFileWithEnum(
                 existingContent,
                 entry.key,
-                schemaMap,
+                entry.value,
                 context,
                 style,
-                outputDir,
-                config: config,
-                override: override,
               )
-            : _createNewFileWithClass(
+            : _createNewFileWithEnum(
                 entry.key,
-                schemaMap,
+                entry.value,
                 context,
                 style,
                 fileName,
-                outputDir,
-                config: config,
-                override: override,
               );
 
         final file = File(filePath);
         await file.writeAsString(fileContent);
         generatedFiles.add(filePath);
-        context.generatedClasses.add(modelName);
+        context.generatedEnums.add(modelName);
+
+        if (existingContent != null) {
+          filesUpdated++;
+          Logger.verbose('Обновлён enum: $modelName');
+        } else {
+          filesCreated++;
+          Logger.verbose('Создан enum: $modelName');
+        }
+      } catch (e) {
+        Logger.error('Ошибка при генерации enum "${entry.key}": $e');
+        rethrow;
       }
     }
+
+    // Затем генерируем классы в отдельные файлы
+    final classSchemas = schemas.entries
+        .where((e) => !context.isEnum((e.value ?? {}) as Map<String, dynamic>))
+        .length;
+    Logger.verbose('Найдено схем классов: $classSchemas');
+
+    for (final entry in schemas.entries) {
+      final schemaMap = (entry.value ?? {}) as Map<String, dynamic>;
+      if (!context.isEnum(schemaMap)) {
+        try {
+          final override = config?.schemaOverrides[entry.key];
+          final modelName = override?.className ?? _toPascalCase(entry.key);
+          final fileName = _toSnakeCase(entry.key);
+          final filePath = p.join(outputDir, '$fileName.dart');
+          final existingContent = existingFiles[modelName];
+
+          final fileContent = existingContent != null
+              ? _updateExistingFileWithClass(
+                  existingContent,
+                  entry.key,
+                  schemaMap,
+                  context,
+                  style,
+                  outputDir,
+                  config: config,
+                  override: override,
+                )
+              : _createNewFileWithClass(
+                  entry.key,
+                  schemaMap,
+                  context,
+                  style,
+                  fileName,
+                  outputDir,
+                  config: config,
+                  override: override,
+                );
+
+          final file = File(filePath);
+          await file.writeAsString(fileContent);
+          generatedFiles.add(filePath);
+          context.generatedClasses.add(modelName);
+
+          if (existingContent != null) {
+            filesUpdated++;
+            Logger.verbose('Обновлён класс: $modelName');
+          } else {
+            filesCreated++;
+            Logger.verbose('Создан класс: $modelName');
+          }
+        } catch (e) {
+          Logger.error('Ошибка при генерации класса "${entry.key}": $e');
+          rethrow;
+        }
+      }
+    }
+
+    // Проверяем отсутствующие $ref после генерации
+    _checkMissingRefs(schemas, context);
 
     return GenerationResult(
       outputDirectory: outputDir,
       generatedFiles: generatedFiles,
+      schemasProcessed: schemas.length,
+      enumsProcessed: enumSchemas.length,
+      filesCreated: filesCreated,
+      filesUpdated: filesUpdated,
     );
   }
 
@@ -334,7 +389,7 @@ class SwaggerToDartGenerator {
       // Обработка $ref
       final ref = schemaMap[r'$ref'] as String?;
       if (ref != null) {
-        final refSchema = context.resolveRef(ref);
+        final refSchema = context.resolveRef(ref, context: parentName);
         if (refSchema != null) {
           final refName = ref.split('/').last;
           final refTypeName = _toPascalCase(refName);
@@ -785,7 +840,7 @@ class SwaggerToDartGenerator {
         // Обработка $ref
         if (item.containsKey(r'$ref')) {
           final ref = item[r'$ref'] as String;
-          final refSchema = context.resolveRef(ref);
+          final refSchema = context.resolveRef(ref, context: name);
           if (refSchema != null) {
             // Рекурсивно обрабатываем allOf в ref
             if (refSchema.containsKey('allOf')) {
@@ -794,7 +849,7 @@ class SwaggerToDartGenerator {
                 if (refItem is Map<String, dynamic>) {
                   if (refItem.containsKey(r'$ref')) {
                     final nestedRef = refItem[r'$ref'] as String;
-                    final nestedSchema = context.resolveRef(nestedRef);
+                    final nestedSchema = context.resolveRef(nestedRef, context: name);
                     if (nestedSchema != null) {
                       final props = nestedSchema['properties'] as Map<String, dynamic>? ?? {};
                       allProperties.addAll(props);
@@ -865,7 +920,7 @@ class $className {
     // Обработка $ref
     final ref = schema[r'$ref'] as String?;
     if (ref != null) {
-      final refSchema = context.resolveRef(ref);
+      final refSchema = context.resolveRef(ref, context: null);
       if (refSchema != null) {
         // Проверяем, является ли это enum'ом
         if (context.isEnum(refSchema)) {
@@ -959,7 +1014,7 @@ class $className {
     // Обработка $ref
     final ref = schema[r'$ref'] as String?;
     if (ref != null) {
-      final refSchema = context.resolveRef(ref);
+      final refSchema = context.resolveRef(ref, context: null);
       if (refSchema != null) {
         if (context.isEnum(refSchema)) {
           final enumName = context.getEnumTypeName(refSchema, ref.split('/').last);
@@ -1061,7 +1116,7 @@ class $className {
     // Обработка $ref
     final ref = schema[r'$ref'] as String?;
     if (ref != null) {
-      final refSchema = context.resolveRef(ref);
+      final refSchema = context.resolveRef(ref, context: null);
       if (refSchema != null && context.isEnum(refSchema)) {
         return '$fieldName?.toJson()';
       }
@@ -1107,5 +1162,112 @@ class $className {
       ..removeWhere((e) => e.isEmpty);
     if (parts.isEmpty) return 'Unknown';
     return parts.map((p) => p[0].toUpperCase() + p.substring(1)).join();
+  }
+
+  /// Проверяет схемы на подозрительные конструкции.
+  static void _validateSchemas(
+    Map<String, dynamic> schemas,
+    GenerationContext context,
+  ) {
+    schemas.forEach((schemaName, schemaRaw) {
+      final schema = (schemaRaw ?? {}) as Map<String, dynamic>;
+      
+      // Пропускаем enum'ы
+      if (context.isEnum(schema)) return;
+
+      final properties = schema['properties'] as Map<String, dynamic>? ?? {};
+      properties.forEach((propName, propSchemaRaw) {
+        final propSchema = (propSchemaRaw ?? {}) as Map<String, dynamic>;
+        
+        // Проверка на отсутствие type
+        if (!propSchema.containsKey('type') && !propSchema.containsKey(r'$ref')) {
+          Logger.warning(
+            'Поле "$propName" в схеме "$schemaName" не имеет типа и не является ссылкой (\$ref). '
+            'Будет сгенерирован тип dynamic.',
+          );
+        }
+
+        // Проверка на подозрительные поля (например, id без nullable и без required)
+        if (propName == 'id' || propName.endsWith('_id') || propName.endsWith('Id')) {
+          final isNullable = propSchema['nullable'] as bool? ?? false;
+          final isRequired = (schema['required'] as List?)?.contains(propName) ?? false;
+          
+          if (!isNullable && !isRequired) {
+            Logger.warning(
+              'Поле "$propName" в схеме "$schemaName" похоже на идентификатор, '
+              'но не помечено как required и не nullable. '
+              'Возможно, стоит добавить required: true или nullable: true.',
+            );
+          }
+        }
+
+        // Проверка на $ref
+        final propRef = propSchema[r'$ref'] as String?;
+        if (propRef != null) {
+          final refSchema = context.resolveRef(propRef, context: schemaName);
+          if (refSchema == null) {
+            Logger.error(
+              'Не найдена схема для ссылки "$propRef" в поле "$propName" схемы "$schemaName". '
+              'Проверьте, что схема определена в спецификации.',
+            );
+          }
+        }
+      });
+    });
+  }
+
+  /// Проверяет отсутствующие $ref после генерации.
+  static void _checkMissingRefs(
+    Map<String, dynamic> schemas,
+    GenerationContext context,
+  ) {
+    final missingRefs = <String>{};
+    
+    void checkSchema(Map<String, dynamic> schema, String? parentName) {
+      final schemaRef = schema[r'$ref'] as String?;
+      if (schemaRef != null) {
+        final refSchema = context.resolveRef(schemaRef, context: parentName);
+        if (refSchema == null && !missingRefs.contains(schemaRef)) {
+          missingRefs.add(schemaRef);
+          final contextMsg = parentName != null ? ' (в схеме "$parentName")' : '';
+          Logger.error(
+            'Не найдена схема для ссылки "$schemaRef"$contextMsg. '
+            'Проверьте, что схема определена в спецификации.',
+          );
+        }
+      }
+
+      // Рекурсивно проверяем вложенные схемы
+      final properties = schema['properties'] as Map<String, dynamic>? ?? {};
+      properties.forEach((propName, propSchemaRaw) {
+        if (propSchemaRaw is Map<String, dynamic>) {
+          checkSchema(propSchemaRaw, parentName);
+        }
+      });
+
+      final items = schema['items'];
+      if (items is Map<String, dynamic>) {
+        checkSchema(items, parentName);
+      }
+
+      final additionalProps = schema['additionalProperties'];
+      if (additionalProps is Map<String, dynamic>) {
+        checkSchema(additionalProps, parentName);
+      }
+
+      final allOf = schema['allOf'] as List?;
+      if (allOf != null) {
+        for (final item in allOf) {
+          if (item is Map<String, dynamic>) {
+            checkSchema(item, parentName);
+          }
+        }
+      }
+    }
+
+    schemas.forEach((schemaName, schemaRaw) {
+      final schema = (schemaRaw ?? {}) as Map<String, dynamic>;
+      checkSchema(schema, schemaName);
+    });
   }
 }

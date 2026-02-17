@@ -1,4 +1,19 @@
-## 0.3.2 (Unreleased)
+## 0.4.2 (Unreleased)
+
+### Added
+- Improved DX and logging
+  - CLI flags `--verbose` / `-v` for detailed logs
+  - CLI flag `--quiet` / `-q` for minimal output
+  - Human-friendly error messages for missing `$ref` targets
+  - Warnings about unsupported or ambiguous schema constructs
+  - Warnings about suspicious specs (e.g., `id` without `nullable: true` but no `required`)
+  - Summary after generation showing:
+    - Number of processed schemas
+    - Number of processed enums
+    - Number of created/updated files
+    - Total files generated
+
+## 0.3.2
 
 ### Added
 - `@JsonKey` generation for snake_case JSON keys

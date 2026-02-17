@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:args/args.dart';
 import 'package:dart_swagger_to_models/dart_swagger_to_models.dart';
 import 'package:dart_swagger_to_models/src/config/config_loader.dart';
+import 'package:dart_swagger_to_models/src/core/logger.dart';
 
 void main(List<String> arguments) async {
   final parser = ArgParser()
@@ -50,6 +51,18 @@ void main(List<String> arguments) async {
       defaultsTo: false,
     )
     ..addFlag(
+      'verbose',
+      abbr: 'v',
+      help: 'Подробный вывод (включает отладочную информацию).',
+      defaultsTo: false,
+    )
+    ..addFlag(
+      'quiet',
+      abbr: 'q',
+      help: 'Минимальный вывод (только ошибки и критичные сообщения).',
+      defaultsTo: false,
+    )
+    ..addFlag(
       'help',
       abbr: 'h',
       negatable: false,
@@ -79,6 +92,17 @@ void main(List<String> arguments) async {
   final projectDir = argResults['project-dir'] as String;
   final configPath = argResults['config'] as String?;
   final shouldFormat = argResults['format'] as bool;
+  final isVerbose = argResults['verbose'] as bool;
+  final isQuiet = argResults['quiet'] as bool;
+
+  // Устанавливаем уровень логирования
+  if (isQuiet) {
+    Logger.setLevel(LogLevel.quiet);
+  } else if (isVerbose) {
+    Logger.setLevel(LogLevel.verbose);
+  } else {
+    Logger.setLevel(LogLevel.normal);
+  }
 
   GenerationStyle? style;
   if (styleName != null) {
@@ -102,11 +126,13 @@ void main(List<String> arguments) async {
     Config? config;
     try {
       config = await ConfigLoader.loadConfig(configPath, projectDir);
+      Logger.verbose('Конфигурация загружена из ${configPath ?? 'dart_swagger_to_models.yaml'}');
     } catch (e) {
-      stderr.writeln('Предупреждение: не удалось загрузить конфигурацию: $e');
+      Logger.warning('Не удалось загрузить конфигурацию: $e');
       // Продолжаем без конфигурации
     }
 
+    Logger.info('Загрузка спецификации из: $input');
     final result = await SwaggerToDartGenerator.generateModels(
       input: input,
       outputDir: outputDir,
@@ -118,7 +144,7 @@ void main(List<String> arguments) async {
 
     // Форматируем файлы, если указан флаг --format
     if (shouldFormat) {
-      stdout.writeln('Форматирование сгенерированных файлов...');
+      Logger.info('Форматирование сгенерированных файлов...');
       for (final file in result.generatedFiles) {
         try {
           final process = await Process.run(
@@ -127,24 +153,60 @@ void main(List<String> arguments) async {
             runInShell: true,
           );
           if (process.exitCode != 0) {
-            stderr.writeln('Предупреждение: не удалось отформатировать $file');
+            Logger.warning('Не удалось отформатировать $file');
+          } else {
+            Logger.verbose('Отформатирован: $file');
           }
         } catch (e) {
-          stderr.writeln('Предупреждение: не удалось запустить dart format для $file: $e');
+          Logger.warning('Не удалось запустить dart format для $file: $e');
         }
       }
     }
 
-    stdout.writeln('Генерация завершена успешно.');
-    stdout.writeln('Директория: ${result.outputDirectory}');
-    for (final file in result.generatedFiles) {
-      stdout.writeln('  - $file');
+    // Выводим сводку
+    _printSummary(result);
+
+    // Выводим предупреждения, если есть
+    if (Logger.warnings.isNotEmpty && !isQuiet) {
+      stdout.writeln();
+      stdout.writeln('Предупреждения:');
+      for (final warning in Logger.warnings) {
+        stdout.writeln('  ⚠️  $warning');
+      }
+    }
+
+    // Выводим ошибки, если есть
+    if (Logger.errors.isNotEmpty) {
+      stderr.writeln();
+      stderr.writeln('Ошибки:');
+      for (final error in Logger.errors) {
+        stderr.writeln('  ❌ $error');
+      }
+      exitCode = 1;
+    } else {
+      Logger.success('Генерация завершена успешно!');
     }
   } catch (e, st) {
-    stderr.writeln('Ошибка генерации моделей: $e');
-    stderr.writeln(st);
+    Logger.error('Ошибка генерации моделей: $e');
+    if (isVerbose) {
+      stderr.writeln(st);
+    }
     exitCode = 1;
   }
+}
+
+void _printSummary(GenerationResult result) {
+  stdout.writeln();
+  stdout.writeln('═══════════════════════════════════════');
+  stdout.writeln('           Сводка генерации');
+  stdout.writeln('═══════════════════════════════════════');
+  stdout.writeln('Обработано схем:        ${result.schemasProcessed}');
+  stdout.writeln('Обработано enum\'ов:     ${result.enumsProcessed}');
+  stdout.writeln('Создано файлов:         ${result.filesCreated}');
+  stdout.writeln('Обновлено файлов:       ${result.filesUpdated}');
+  stdout.writeln('Всего файлов:           ${result.generatedFiles.length}');
+  stdout.writeln('Выходная директория:    ${result.outputDirectory}');
+  stdout.writeln('═══════════════════════════════════════');
 }
 
 void _printUsage(ArgParser parser) {
