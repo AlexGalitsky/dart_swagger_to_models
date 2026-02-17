@@ -397,7 +397,7 @@ class SwaggerToDartGenerator {
   }
 
   /// Scans project for Dart files with markers.
-  /// Returns Map<ModelName, FileContent>.
+  /// Returns a map where the key is the model name and the value is file content.
   static Future<Map<String, String>> _scanProjectForMarkers(
     String projectDir,
     String outputDir,
