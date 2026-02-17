@@ -6,6 +6,7 @@ import 'package:path/path.dart' as p;
 import 'package:yaml/yaml.dart';
 
 import 'src/config/config.dart';
+import 'src/core/cache.dart';
 import 'src/core/lint_rules.dart';
 import 'src/core/logger.dart';
 import 'src/core/types.dart';
@@ -74,6 +75,7 @@ class SwaggerToDartGenerator {
   /// [projectDir] — корневая директория проекта для сканирования Dart файлов
   ///                (поиск существующих файлов моделей с маркерами).
   /// [config] — конфигурация генератора (опционально).
+  /// [changedOnly] — если true, генерирует только изменённые схемы (инкрементальная генерация).
   static Future<GenerationResult> generateModels({
     required String input,
     String? outputDir,
@@ -81,6 +83,7 @@ class SwaggerToDartGenerator {
     GenerationStyle? style,
     String? projectDir,
     Config? config,
+    bool changedOnly = false,
   }) async {
     // Применяем конфигурацию с приоритетом: параметры > config > значения по умолчанию
     final effectiveConfig = config ?? Config.empty();
@@ -124,6 +127,7 @@ class SwaggerToDartGenerator {
       outputDir: effectiveOutputDir,
       projectDir: effectiveProjectDir,
       config: effectiveConfig,
+      changedOnly: changedOnly,
     );
   }
 
@@ -135,17 +139,61 @@ class SwaggerToDartGenerator {
     required String outputDir,
     required String projectDir,
     Config? config,
+    bool changedOnly = false,
   }) async {
     Logger.clear();
     Logger.verbose('Начало генерации моделей');
     Logger.verbose('Стиль: $style');
     Logger.verbose('Выходная директория: $outputDir');
+    if (changedOnly) {
+      Logger.verbose('Режим инкрементальной генерации: только изменённые схемы');
+    }
 
     final generatedFiles = <String>[];
     final outDir = Directory(outputDir);
     if (!await outDir.exists()) {
       Logger.verbose('Создание выходной директории: $outputDir');
       await outDir.create(recursive: true);
+    }
+
+    // Загружаем кэш для инкрементальной генерации
+    final cache = await GenerationCache.load(projectDir);
+    final schemasToProcess = <String, Map<String, dynamic>>{};
+
+    if (changedOnly && cache != null) {
+      // Определяем, какие схемы изменились
+      for (final entry in schemas.entries) {
+        final schemaMap = (entry.value ?? {}) as Map<String, dynamic>;
+        if (cache.hasChanged(entry.key, schemaMap)) {
+          schemasToProcess[entry.key] = schemaMap;
+          Logger.verbose('Схема "${entry.key}" изменилась, будет перегенерирована');
+        } else {
+          Logger.verbose('Схема "${entry.key}" не изменилась, пропускаем');
+        }
+      }
+
+      // Проверяем удалённые схемы
+      final currentSchemaNames = schemas.keys.toSet();
+      final cachedSchemaNames = cache.cachedSchemas;
+      final deletedSchemas = cachedSchemaNames.difference(currentSchemaNames);
+      
+      if (deletedSchemas.isNotEmpty) {
+        Logger.verbose('Обнаружены удалённые схемы: ${deletedSchemas.join(", ")}');
+        for (final deletedSchema in deletedSchemas) {
+          cache.removeHash(deletedSchema);
+          // Удаляем файл, если он существует
+          final fileName = _toSnakeCase(deletedSchema);
+          final filePath = p.join(outputDir, '$fileName.dart');
+          final file = File(filePath);
+          if (await file.exists()) {
+            await file.delete();
+            Logger.verbose('Удалён файл для удалённой схемы: $fileName.dart');
+          }
+        }
+      }
+    } else {
+      // Режим полной генерации
+      schemasToProcess.addAll(schemas.map((k, v) => MapEntry(k, (v ?? {}) as Map<String, dynamic>)));
     }
 
     // Сканируем проект для поиска существующих файлов с маркерами
@@ -156,13 +204,13 @@ class SwaggerToDartGenerator {
     );
     Logger.verbose('Найдено существующих файлов: ${existingFiles.length}');
 
-    // Проверяем схемы на подозрительные конструкции
+    // Проверяем схемы на подозрительные конструкции (только для обрабатываемых схем)
     final lintConfig = config?.lint ?? LintConfig.defaultConfig();
-    _validateSchemas(schemas, context, lintConfig);
+    _validateSchemas(schemasToProcess, context, lintConfig);
 
     // Сначала генерируем enum'ы
     final enumSchemas = <String, Map<String, dynamic>>{};
-    schemas.forEach((name, schema) {
+    schemasToProcess.forEach((name, schema) {
       final schemaMap = (schema ?? {}) as Map<String, dynamic>;
       if (context.isEnum(schemaMap)) {
         enumSchemas[name] = schemaMap;
@@ -211,6 +259,12 @@ class SwaggerToDartGenerator {
           filesCreated++;
           Logger.verbose('Создан enum: $modelName');
         }
+
+        // Обновляем кэш
+        if (cache != null) {
+          final hash = GenerationCache.computeSchemaHash(entry.value);
+          cache.setHash(entry.key, hash);
+        }
       } catch (e) {
         Logger.error('Ошибка при генерации enum "${entry.key}": $e');
         rethrow;
@@ -218,12 +272,12 @@ class SwaggerToDartGenerator {
     }
 
     // Затем генерируем классы в отдельные файлы
-    final classSchemas = schemas.entries
+    final classSchemas = schemasToProcess.entries
         .where((e) => !context.isEnum((e.value ?? {}) as Map<String, dynamic>))
         .length;
     Logger.verbose('Найдено схем классов: $classSchemas');
 
-    for (final entry in schemas.entries) {
+    for (final entry in schemasToProcess.entries) {
       final schemaMap = (entry.value ?? {}) as Map<String, dynamic>;
       if (!context.isEnum(schemaMap)) {
         try {
@@ -267,11 +321,32 @@ class SwaggerToDartGenerator {
             filesCreated++;
             Logger.verbose('Создан класс: $modelName');
           }
+
+          // Обновляем кэш
+          if (cache != null) {
+            final hash = GenerationCache.computeSchemaHash(schemaMap);
+            cache.setHash(entry.key, hash);
+          }
         } catch (e) {
           Logger.error('Ошибка при генерации класса "${entry.key}": $e');
           rethrow;
         }
       }
+    }
+
+    // Обновляем кэш для всех схем (даже не изменённых, если changedOnly = false)
+    if (cache != null && !changedOnly) {
+      for (final entry in schemas.entries) {
+        final schemaMap = (entry.value ?? {}) as Map<String, dynamic>;
+        final hash = GenerationCache.computeSchemaHash(schemaMap);
+        cache.setHash(entry.key, hash);
+      }
+    }
+
+    // Сохраняем кэш
+    if (cache != null) {
+      await cache.save();
+      Logger.verbose('Кэш сохранён в ${cache.cacheFilePath}');
     }
 
     // Проверяем отсутствующие $ref после генерации
@@ -280,7 +355,7 @@ class SwaggerToDartGenerator {
     return GenerationResult(
       outputDirectory: outputDir,
       generatedFiles: generatedFiles,
-      schemasProcessed: schemas.length,
+      schemasProcessed: schemasToProcess.length,
       enumsProcessed: enumSchemas.length,
       filesCreated: filesCreated,
       filesUpdated: filesUpdated,

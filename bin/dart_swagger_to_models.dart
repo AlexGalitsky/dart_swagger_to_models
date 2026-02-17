@@ -63,6 +63,11 @@ void main(List<String> arguments) async {
       defaultsTo: false,
     )
     ..addFlag(
+      'changed-only',
+      help: 'Инкрементальная генерация: перегенерировать только изменённые схемы.',
+      defaultsTo: false,
+    )
+    ..addFlag(
       'help',
       abbr: 'h',
       negatable: false,
@@ -94,6 +99,7 @@ void main(List<String> arguments) async {
   final shouldFormat = argResults['format'] as bool;
   final isVerbose = argResults['verbose'] as bool;
   final isQuiet = argResults['quiet'] as bool;
+  final changedOnly = argResults['changed-only'] as bool;
 
   // Устанавливаем уровень логирования
   if (isQuiet) {
@@ -140,6 +146,7 @@ void main(List<String> arguments) async {
       style: style,
       projectDir: projectDir,
       config: config,
+      changedOnly: changedOnly,
     );
 
     // Форматируем файлы, если указан флаг --format

@@ -1,3 +1,34 @@
+## 0.5.1 (Unreleased)
+
+### Added
+- Incremental generation (инкрементальная генерация)
+  - Cache system for tracking schema changes:
+    - Caches schema hashes in `.dart_swagger_to_models.cache` file
+    - Uses SHA-256 hashes to detect schema changes
+    - Automatically handles new, modified, and deleted schemas
+  - `--changed-only` CLI flag:
+    - Regenerates only schemas that have changed since last run
+    - Significantly improves performance for large specifications
+    - Automatically removes files for deleted schemas
+  - Comprehensive tests:
+    - First run (generates all schemas)
+    - Incremental run (only changed schemas)
+    - Adding new schemas
+    - Removing schemas
+    - Modifying single schema in large spec
+  - Example usage:
+    ```bash
+    # First run - generates all schemas
+    dart run dart_swagger_to_models:dart_swagger_to_models \
+      --input api.yaml \
+      --changed-only
+    
+    # Subsequent runs - only changed schemas
+    dart run dart_swagger_to_models:dart_swagger_to_models \
+      --input api.yaml \
+      --changed-only
+    ```
+
 ## 0.2.1 (Unreleased)
 
 ### Added

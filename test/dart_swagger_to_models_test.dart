@@ -1860,4 +1860,325 @@ lint:
       expect(content, contains('final String extra;')); // Из Final
     });
   });
+
+  group('Инкрементальная генерация (0.5.1)', () {
+    test('генерирует все схемы при первом запуске', () async {
+      final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_cache_');
+      final specFile = File('${tempDir.path}/openapi.json');
+
+      final spec = <String, dynamic>{
+        'openapi': '3.0.0',
+        'info': {'title': 'Test', 'version': '1.0.0'},
+        'paths': <String, dynamic>{},
+        'components': {
+          'schemas': {
+            'User': {
+              'type': 'object',
+              'properties': {
+                'id': {'type': 'integer'},
+                'name': {'type': 'string'},
+              },
+            },
+            'Product': {
+              'type': 'object',
+              'properties': {
+                'id': {'type': 'integer'},
+                'title': {'type': 'string'},
+              },
+            },
+          },
+        },
+      };
+
+      await specFile.writeAsString(jsonEncode(spec));
+
+      final result = await SwaggerToDartGenerator.generateModels(
+        input: specFile.path,
+        outputDir: '${tempDir.path}/models',
+        projectDir: tempDir.path,
+        changedOnly: true,
+      );
+
+      // Должны быть сгенерированы все схемы
+      expect(result.schemasProcessed, equals(2));
+      expect(result.generatedFiles.length, equals(2));
+
+      // Проверяем, что кэш создан
+      final cacheFile = File('${tempDir.path}/.dart_swagger_to_models.cache');
+      expect(await cacheFile.exists(), isTrue);
+    });
+
+    test('генерирует только изменённые схемы при втором запуске', () async {
+      final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_cache2_');
+      final specFile = File('${tempDir.path}/openapi.json');
+
+      final spec1 = <String, dynamic>{
+        'openapi': '3.0.0',
+        'info': {'title': 'Test', 'version': '1.0.0'},
+        'paths': <String, dynamic>{},
+        'components': {
+          'schemas': {
+            'User': {
+              'type': 'object',
+              'properties': {
+                'id': {'type': 'integer'},
+                'name': {'type': 'string'},
+              },
+            },
+            'Product': {
+              'type': 'object',
+              'properties': {
+                'id': {'type': 'integer'},
+                'title': {'type': 'string'},
+              },
+            },
+          },
+        },
+      };
+
+      await specFile.writeAsString(jsonEncode(spec1));
+
+      // Первый запуск - генерируем все
+      final result1 = await SwaggerToDartGenerator.generateModels(
+        input: specFile.path,
+        outputDir: '${tempDir.path}/models',
+        projectDir: tempDir.path,
+        changedOnly: true,
+      );
+
+      expect(result1.schemasProcessed, equals(2));
+
+      // Изменяем только User
+      final spec2 = <String, dynamic>{
+        'openapi': '3.0.0',
+        'info': {'title': 'Test', 'version': '1.0.0'},
+        'paths': <String, dynamic>{},
+        'components': {
+          'schemas': {
+            'User': {
+              'type': 'object',
+              'properties': {
+                'id': {'type': 'integer'},
+                'name': {'type': 'string'},
+                'email': {'type': 'string'}, // Добавили поле
+              },
+            },
+            'Product': {
+              'type': 'object',
+              'properties': {
+                'id': {'type': 'integer'},
+                'title': {'type': 'string'},
+              },
+            },
+          },
+        },
+      };
+
+      await specFile.writeAsString(jsonEncode(spec2));
+
+      // Второй запуск - только изменённые
+      Logger.clear();
+      final result2 = await SwaggerToDartGenerator.generateModels(
+        input: specFile.path,
+        outputDir: '${tempDir.path}/models',
+        projectDir: tempDir.path,
+        changedOnly: true,
+      );
+
+      // Должна быть обработана только одна схема (User)
+      expect(result2.schemasProcessed, equals(1));
+
+      // Проверяем, что User обновлён
+      final userFile = result2.generatedFiles.firstWhere((f) => f.contains('user.dart'));
+      final userContent = await File(userFile).readAsString();
+      expect(userContent, contains('final String email;'));
+    });
+
+    test('удаляет файлы для удалённых схем', () async {
+      final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_cache3_');
+      final specFile = File('${tempDir.path}/openapi.json');
+
+      final spec1 = <String, dynamic>{
+        'openapi': '3.0.0',
+        'info': {'title': 'Test', 'version': '1.0.0'},
+        'paths': <String, dynamic>{},
+        'components': {
+          'schemas': {
+            'User': {
+              'type': 'object',
+              'properties': {
+                'id': {'type': 'integer'},
+                'name': {'type': 'string'},
+              },
+            },
+            'Product': {
+              'type': 'object',
+              'properties': {
+                'id': {'type': 'integer'},
+                'title': {'type': 'string'},
+              },
+            },
+          },
+        },
+      };
+
+      await specFile.writeAsString(jsonEncode(spec1));
+
+      // Первый запуск
+      await SwaggerToDartGenerator.generateModels(
+        input: specFile.path,
+        outputDir: '${tempDir.path}/models',
+        projectDir: tempDir.path,
+        changedOnly: true,
+      );
+
+      // Проверяем, что файлы созданы
+      final userFile = File('${tempDir.path}/models/user.dart');
+      final productFile = File('${tempDir.path}/models/product.dart');
+      expect(await userFile.exists(), isTrue);
+      expect(await productFile.exists(), isTrue);
+
+      // Удаляем Product из спецификации
+      final spec2 = <String, dynamic>{
+        'openapi': '3.0.0',
+        'info': {'title': 'Test', 'version': '1.0.0'},
+        'paths': <String, dynamic>{},
+        'components': {
+          'schemas': {
+            'User': {
+              'type': 'object',
+              'properties': {
+                'id': {'type': 'integer'},
+                'name': {'type': 'string'},
+              },
+            },
+          },
+        },
+      };
+
+      await specFile.writeAsString(jsonEncode(spec2));
+
+      // Второй запуск
+      await SwaggerToDartGenerator.generateModels(
+        input: specFile.path,
+        outputDir: '${tempDir.path}/models',
+        projectDir: tempDir.path,
+        changedOnly: true,
+      );
+
+      // Product должен быть удалён
+      expect(await productFile.exists(), isFalse);
+      expect(await userFile.exists(), isTrue);
+    });
+
+    test('добавляет новые схемы при инкрементальной генерации', () async {
+      final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_cache4_');
+      final specFile = File('${tempDir.path}/openapi.json');
+
+      final spec1 = <String, dynamic>{
+        'openapi': '3.0.0',
+        'info': {'title': 'Test', 'version': '1.0.0'},
+        'paths': <String, dynamic>{},
+        'components': {
+          'schemas': {
+            'User': {
+              'type': 'object',
+              'properties': {
+                'id': {'type': 'integer'},
+                'name': {'type': 'string'},
+              },
+            },
+          },
+        },
+      };
+
+      await specFile.writeAsString(jsonEncode(spec1));
+
+      // Первый запуск
+      await SwaggerToDartGenerator.generateModels(
+        input: specFile.path,
+        outputDir: '${tempDir.path}/models',
+        projectDir: tempDir.path,
+        changedOnly: true,
+      );
+
+      // Добавляем новую схему
+      final spec2 = <String, dynamic>{
+        'openapi': '3.0.0',
+        'info': {'title': 'Test', 'version': '1.0.0'},
+        'paths': <String, dynamic>{},
+        'components': {
+          'schemas': {
+            'User': {
+              'type': 'object',
+              'properties': {
+                'id': {'type': 'integer'},
+                'name': {'type': 'string'},
+              },
+            },
+            'Product': {
+              'type': 'object',
+              'properties': {
+                'id': {'type': 'integer'},
+                'title': {'type': 'string'},
+              },
+            },
+          },
+        },
+      };
+
+      await specFile.writeAsString(jsonEncode(spec2));
+
+      // Второй запуск
+      final result = await SwaggerToDartGenerator.generateModels(
+        input: specFile.path,
+        outputDir: '${tempDir.path}/models',
+        projectDir: tempDir.path,
+        changedOnly: true,
+      );
+
+      // Должна быть обработана только новая схема (Product)
+      expect(result.schemasProcessed, equals(1));
+
+      // Проверяем, что Product создан
+      final productFile = File('${tempDir.path}/models/product.dart');
+      expect(await productFile.exists(), isTrue);
+    });
+
+    test('работает без кэша (первый запуск)', () async {
+      final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_cache5_');
+      final specFile = File('${tempDir.path}/openapi.json');
+
+      final spec = <String, dynamic>{
+        'openapi': '3.0.0',
+        'info': {'title': 'Test', 'version': '1.0.0'},
+        'paths': <String, dynamic>{},
+        'components': {
+          'schemas': {
+            'User': {
+              'type': 'object',
+              'properties': {
+                'id': {'type': 'integer'},
+                'name': {'type': 'string'},
+              },
+            },
+          },
+        },
+      };
+
+      await specFile.writeAsString(jsonEncode(spec));
+
+      // Запуск без кэша (changedOnly = true, но кэша нет)
+      final result = await SwaggerToDartGenerator.generateModels(
+        input: specFile.path,
+        outputDir: '${tempDir.path}/models',
+        projectDir: tempDir.path,
+        changedOnly: true,
+      );
+
+      // Должна быть обработана одна схема
+      expect(result.schemasProcessed, equals(1));
+      expect(result.generatedFiles.length, equals(1));
+    });
+  });
 }

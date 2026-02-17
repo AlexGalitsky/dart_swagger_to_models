@@ -48,6 +48,7 @@ Models are generated from `definitions` / `components.schemas` with
 - **`--config`, `-c`**: path to configuration file (default: searches for `dart_swagger_to_models.yaml` in project root).
 - **`--verbose`, `-v`**: detailed output (includes debug information).
 - **`--quiet`, `-q`**: minimal output (only errors and critical messages).
+- **`--changed-only`**: incremental generation - regenerate only changed schemas (uses cache in `.dart_swagger_to_models.cache`).
 - **`--help`, `-h`**: show help.
 
 ### Configuration file

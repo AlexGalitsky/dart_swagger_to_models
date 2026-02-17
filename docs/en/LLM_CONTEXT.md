@@ -32,6 +32,11 @@ the project context.
   - Handles OpenAPI composition schemas:
     - `_generateAllOfClass` — recursive handling of nested `allOf` combinations, multiple inheritance, circular dependency detection.
     - `_generateOneOfClass` — safe `dynamic` wrappers for `oneOf`/`anyOf` with discriminator detection and logging.
+  - Supports incremental generation:
+    - `GenerationCache` class for caching schema hashes in `.dart_swagger_to_models.cache`
+    - `--changed-only` CLI flag to regenerate only changed schemas
+    - Automatic detection of new, modified, and deleted schemas
+    - Automatic cleanup of files for deleted schemas
   - Logs progress and errors via `Logger` class.
 
 - **`lib/src/generators/*.dart`**
@@ -83,6 +88,12 @@ the project context.
       - Safe `dynamic` wrappers for `oneOf`/`anyOf` with clear error messages.
       - Discriminator detection and logging (architecture prepared for future union-type generation).
       - Circular dependency detection in `allOf`.
+    - Incremental generation:
+      - First run (generates all schemas and creates cache).
+      - Incremental run (only changed schemas).
+      - Adding new schemas.
+      - Removing schemas.
+      - Modifying single schema in large spec.
 
 ### Key invariants / rules
 
