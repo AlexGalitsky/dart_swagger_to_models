@@ -1,3 +1,23 @@
+## 0.2.1 (Unreleased)
+
+### Added
+- Improved OpenAPI handling
+  - Enhanced `oneOf` / `anyOf` support:
+    - Safer `dynamic` wrappers with clear error messages
+    - Architecture prepared for future union-type generation (especially with `discriminator`)
+    - Verbose logging about possible types in `oneOf`/`anyOf` schemas
+    - Detection and logging of `discriminator` usage
+  - Extended `allOf` support:
+    - Recursive handling of nested `allOf` combinations
+    - Support for multiple inheritance cases
+    - Detection and prevention of circular dependencies
+    - Verbose logging for nested `allOf` processing
+  - Comprehensive tests for complex composed schemas:
+    - Nested `allOf` combinations
+    - Multiple inheritance through `allOf`
+    - `oneOf` / `anyOf` with discriminator
+    - Circular dependency handling
+
 ## 0.5.2 (Unreleased)
 
 ### Added

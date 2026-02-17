@@ -725,9 +725,18 @@ class SwaggerToDartGenerator {
       return _generateAllOfClass(name, schema, context, style, config: config, override: override);
     }
 
-    // Обработка oneOf/anyOf (OpenAPI 3) - пока генерируем как dynamic
-    if (schema.containsKey('oneOf') || schema.containsKey('anyOf')) {
-      return _generateOneOfClass(name, schema, context, override: override);
+    // Обработка oneOf/anyOf (OpenAPI 3)
+    final oneOf = schema['oneOf'] as List?;
+    final anyOf = schema['anyOf'] as List?;
+    if (oneOf != null || anyOf != null) {
+      return _generateOneOfClass(
+        name,
+        schema,
+        context,
+        oneOf: oneOf,
+        anyOf: anyOf,
+        override: override,
+      );
     }
 
     final className = override?.className ?? _toPascalCase(name);
@@ -825,6 +834,9 @@ class SwaggerToDartGenerator {
     );
   }
 
+  /// Генерирует класс для allOf схемы.
+  /// 
+  /// Обрабатывает вложенные комбинации allOf и случаи множественного наследования.
   static String _generateAllOfClass(
     String name,
     Map<String, dynamic> schema,
@@ -834,54 +846,86 @@ class SwaggerToDartGenerator {
     SchemaOverride? override,
   }) {
     final allOf = schema['allOf'] as List;
+    Logger.verbose('Обработка allOf для схемы "$name" (${allOf.length} элементов)');
+
     final allProperties = <String, dynamic>{};
     final allRequired = <String>[];
+    final processedRefs = <String>{}; // Для предотвращения циклических зависимостей
 
-    for (final item in allOf) {
-      if (item is Map<String, dynamic>) {
-        // Обработка $ref
-        if (item.containsKey(r'$ref')) {
-          final ref = item[r'$ref'] as String;
-          final refSchema = context.resolveRef(ref, context: name);
-          if (refSchema != null) {
-            // Рекурсивно обрабатываем allOf в ref
-            if (refSchema.containsKey('allOf')) {
-              final refAllOf = refSchema['allOf'] as List;
-              for (final refItem in refAllOf) {
-                if (refItem is Map<String, dynamic>) {
-                  if (refItem.containsKey(r'$ref')) {
-                    final nestedRef = refItem[r'$ref'] as String;
-                    final nestedSchema = context.resolveRef(nestedRef, context: name);
-                    if (nestedSchema != null) {
-                      final props = nestedSchema['properties'] as Map<String, dynamic>? ?? {};
-                      allProperties.addAll(props);
-                      final req = (nestedSchema['required'] as List?)?.cast<String>() ?? <String>[];
-                      allRequired.addAll(req);
-                    }
-                  } else {
-                    final props = refItem['properties'] as Map<String, dynamic>? ?? {};
-                    allProperties.addAll(props);
-                    final req = (refItem['required'] as List?)?.cast<String>() ?? <String>[];
-                    allRequired.addAll(req);
-                  }
-                }
-              }
-            } else {
-              final props = refSchema['properties'] as Map<String, dynamic>? ?? {};
-              allProperties.addAll(props);
-              final req = (refSchema['required'] as List?)?.cast<String>() ?? <String>[];
-              allRequired.addAll(req);
-            }
+    // Рекурсивная функция для обработки элементов allOf
+    void processAllOfItem(dynamic item, String? parentName) {
+      if (item is! Map<String, dynamic>) return;
+
+      // Обработка $ref
+      if (item.containsKey(r'$ref')) {
+        final ref = item[r'$ref'] as String;
+        
+        // Проверка на циклические зависимости
+        if (processedRefs.contains(ref)) {
+          Logger.warning(
+            'Обнаружена циклическая зависимость для $ref в схеме "$name". '
+            'Пропускаем повторную обработку.',
+          );
+          return;
+        }
+        processedRefs.add(ref);
+
+        final refSchema = context.resolveRef(ref, context: parentName ?? name);
+        if (refSchema == null) {
+          Logger.warning(
+            'Не удалось разрешить ссылку $ref в allOf схемы "$name". '
+            'Пропускаем этот элемент.',
+          );
+          processedRefs.remove(ref);
+          return;
+        }
+
+        // Рекурсивно обрабатываем вложенные allOf
+        if (refSchema.containsKey('allOf')) {
+          final refAllOf = refSchema['allOf'] as List;
+          Logger.verbose('Обнаружен вложенный allOf в $ref (${refAllOf.length} элементов)');
+          for (final refItem in refAllOf) {
+            processAllOfItem(refItem, ref.split('/').last);
           }
         } else {
-          // Обработка обычных свойств
-          final props = item['properties'] as Map<String, dynamic>? ?? {};
+          // Обрабатываем свойства из ref схемы
+          final props = refSchema['properties'] as Map<String, dynamic>? ?? {};
           allProperties.addAll(props);
-          final req = (item['required'] as List?)?.cast<String>() ?? <String>[];
+          final req = (refSchema['required'] as List?)?.cast<String>() ?? <String>[];
           allRequired.addAll(req);
+        }
+
+        processedRefs.remove(ref);
+      } else {
+        // Обработка обычных свойств
+        final props = item['properties'] as Map<String, dynamic>? ?? {};
+        allProperties.addAll(props);
+        final req = (item['required'] as List?)?.cast<String>() ?? <String>[];
+        allRequired.addAll(req);
+
+        // Если элемент сам содержит allOf, обрабатываем рекурсивно
+        if (item.containsKey('allOf')) {
+          final nestedAllOf = item['allOf'] as List;
+          Logger.verbose('Обнаружен вложенный allOf в элементе схемы "$name" (${nestedAllOf.length} элементов)');
+          for (final nestedItem in nestedAllOf) {
+            processAllOfItem(nestedItem, parentName);
+          }
         }
       }
     }
+
+    // Обрабатываем все элементы allOf
+    for (final item in allOf) {
+      processAllOfItem(item, name);
+    }
+
+    if (allProperties.isEmpty) {
+      Logger.warning(
+        'Схема "$name" с allOf не содержит свойств после объединения. '
+        'Будет сгенерирован пустой класс.',
+      );
+    }
+
     final mergedSchema = <String, dynamic>{
       'type': 'object',
       'properties': allProperties,
@@ -891,27 +935,117 @@ class SwaggerToDartGenerator {
     return _generateClass(name, mergedSchema, context, style, config: config, override: override);
   }
 
+  /// Генерирует класс для oneOf/anyOf схем.
+  /// 
+  /// Для oneOf/anyOf генерируется безопасная обёртка с dynamic значением.
+  /// В будущем здесь можно будет генерировать union-типы, особенно с discriminator.
   static String _generateOneOfClass(
     String name,
     Map<String, dynamic> schema,
     GenerationContext context, {
+    List? oneOf,
+    List? anyOf,
     SchemaOverride? override,
   }) {
     final className = override?.className ?? _toPascalCase(name);
-    // Для oneOf/anyOf пока генерируем простой класс с dynamic
-    return '''
-class $className {
-  final dynamic value;
+    final hasOneOf = oneOf != null && oneOf.isNotEmpty;
+    final hasAnyOf = anyOf != null && anyOf.isNotEmpty;
+    
+    // Определяем типы для логирования
+    final possibleTypes = <String>[];
+    if (hasOneOf) {
+      for (final item in oneOf!) {
+        if (item is Map<String, dynamic>) {
+          final ref = item[r'$ref'] as String?;
+          if (ref != null) {
+            final refName = ref.split('/').last;
+            possibleTypes.add(refName);
+          } else {
+            final type = item['type'] as String?;
+            if (type != null) {
+              possibleTypes.add(type);
+            }
+          }
+        }
+      }
+    }
+    if (hasAnyOf) {
+      for (final item in anyOf!) {
+        if (item is Map<String, dynamic>) {
+          final ref = item[r'$ref'] as String?;
+          if (ref != null) {
+            final refName = ref.split('/').last;
+            possibleTypes.add(refName);
+          } else {
+            final type = item['type'] as String?;
+            if (type != null) {
+              possibleTypes.add(type);
+            }
+          }
+        }
+      }
+    }
 
-  const $className(this.value);
+    // Проверяем наличие discriminator (для будущей поддержки union-типов)
+    final discriminator = schema['discriminator'] as Map<String, dynamic>?;
+    final hasDiscriminator = discriminator != null;
+    
+    if (hasDiscriminator) {
+      final propertyName = discriminator['propertyName'] as String? ?? 'type';
+      Logger.verbose(
+        'Схема "$name" использует discriminator "$propertyName" для oneOf/anyOf. '
+        'В будущих версиях будет поддержка генерации union-типов.',
+      );
+    }
 
-  factory $className.fromJson(dynamic json) {
-    return $className(json);
-  }
+    // Логируем информацию о возможных типах
+    if (possibleTypes.isNotEmpty) {
+      final typesStr = possibleTypes.join(', ');
+      Logger.verbose(
+        'Схема "$name" использует ${hasOneOf ? 'oneOf' : 'anyOf'} с возможными типами: $typesStr. '
+        'Генерируется безопасная обёртка с dynamic значением.',
+      );
+    } else {
+      Logger.warning(
+        'Схема "$name" использует ${hasOneOf ? 'oneOf' : 'anyOf'}, но не удалось определить возможные типы. '
+        'Генерируется обёртка с dynamic значением.',
+      );
+    }
 
-  dynamic toJson() => value;
-}
-''';
+    // Генерируем безопасную обёртку
+    final buffer = StringBuffer()
+      ..writeln('/// Класс для ${hasOneOf ? 'oneOf' : 'anyOf'} схемы "$name".')
+      ..writeln('///')
+      ..writeln('/// Внимание: Для ${hasOneOf ? 'oneOf' : 'anyOf'} схем генерируется обёртка с dynamic значением.')
+      ..writeln('/// В будущих версиях будет поддержка генерации union-типов.');
+    if (possibleTypes.isNotEmpty) {
+      buffer.writeln('/// Возможные типы: ${possibleTypes.join(', ')}.');
+    }
+    buffer
+      ..writeln('class $className {')
+      ..writeln('  /// Значение (может быть одним из возможных типов).')
+      ..writeln('  final dynamic value;')
+      ..writeln()
+      ..writeln('  const $className(this.value);')
+      ..writeln()
+      ..writeln('  /// Создаёт экземпляр из JSON.')
+      ..writeln('  ///')
+      ..writeln('  /// Внимание: Для ${hasOneOf ? 'oneOf' : 'anyOf'} схем требуется ручная валидация типа.')
+      ..writeln('  factory $className.fromJson(dynamic json) {')
+      ..writeln('    if (json == null) {')
+      ..writeln('      throw ArgumentError(\'JSON не может быть null для $className\');')
+      ..writeln('    }')
+      ..writeln('    return $className(json);')
+      ..writeln('  }')
+      ..writeln()
+      ..writeln('  /// Преобразует в JSON.')
+      ..writeln('  dynamic toJson() => value;')
+      ..writeln()
+      ..writeln('  @override')
+      ..writeln('  String toString() => \'$className(value: \$value)\';')
+      ..writeln('}');
+
+    return buffer.toString();
   }
 
   static String _dartTypeForSchema(
@@ -1201,18 +1335,22 @@ class $className {
         }
       }
 
-      // Проверка пустого объекта (только для не-enum схем)
-      if (lintConfig.isEnabled(LintRuleId.emptyObject) && !context.isEnum(schema)) {
-        final properties = schema['properties'] as Map<String, dynamic>? ?? {};
-        final additionalProps = schema['additionalProperties'];
-        if (properties.isEmpty && (additionalProps == null || additionalProps == false)) {
-          _reportLintIssue(
-            LintRuleId.emptyObject,
-            lintConfig,
-            'Схема "$schemaName" является пустым объектом (нет properties и additionalProperties).',
-          );
-        }
-      }
+              // Проверка пустого объекта (только для не-enum схем и не-oneOf/anyOf/allOf)
+              if (lintConfig.isEnabled(LintRuleId.emptyObject) && 
+                  !context.isEnum(schema) &&
+                  !schema.containsKey('oneOf') &&
+                  !schema.containsKey('anyOf') &&
+                  !schema.containsKey('allOf')) {
+                final properties = schema['properties'] as Map<String, dynamic>? ?? {};
+                final additionalProps = schema['additionalProperties'];
+                if (properties.isEmpty && (additionalProps == null || additionalProps == false)) {
+                  _reportLintIssue(
+                    LintRuleId.emptyObject,
+                    lintConfig,
+                    'Схема "$schemaName" является пустым объектом (нет properties и additionalProperties).',
+                  );
+                }
+              }
 
       final properties = schema['properties'] as Map<String, dynamic>? ?? {};
       properties.forEach((propName, propSchemaRaw) {

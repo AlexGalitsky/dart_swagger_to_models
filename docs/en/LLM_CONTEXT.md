@@ -29,6 +29,9 @@ the project context.
   - Uses strategy pattern for class body generation via `GeneratorFactory`.
   - Validates schemas (`_validateSchemas`) and checks for missing `$ref` targets (`_checkMissingRefs`).
   - Collects dependencies for import generation (`_collectDependencies`, `_generateImportsForDependencies`).
+  - Handles OpenAPI composition schemas:
+    - `_generateAllOfClass` — recursive handling of nested `allOf` combinations, multiple inheritance, circular dependency detection.
+    - `_generateOneOfClass` — safe `dynamic` wrappers for `oneOf`/`anyOf` with discriminator detection and logging.
   - Logs progress and errors via `Logger` class.
 
 - **`lib/src/generators/*.dart`**
@@ -75,6 +78,11 @@ the project context.
     - `@JsonKey` generation for snake_case JSON keys.
     - Import generation between models.
     - Enum improvements (`x-enumNames`, `x-enum-varnames`).
+    - OpenAPI composition schemas (`allOf`, `oneOf`, `anyOf`):
+      - Nested `allOf` combinations and multiple inheritance.
+      - Safe `dynamic` wrappers for `oneOf`/`anyOf` with clear error messages.
+      - Discriminator detection and logging (architecture prepared for future union-type generation).
+      - Circular dependency detection in `allOf`.
 
 ### Key invariants / rules
 

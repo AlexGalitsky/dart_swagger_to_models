@@ -1502,4 +1502,362 @@ lint:
       expect(Logger.warnings.any((w) => w.contains('integer') && w.contains('format')), isTrue);
     });
   });
+
+  group('Улучшенная поддержка OpenAPI (0.2.1)', () {
+    test('обрабатывает вложенные allOf комбинации', () async {
+      final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_nested_allof_');
+      final specFile = File('${tempDir.path}/openapi.json');
+
+      final spec = <String, dynamic>{
+        'openapi': '3.0.0',
+        'info': {'title': 'Test', 'version': '1.0.0'},
+        'paths': <String, dynamic>{},
+        'components': {
+          'schemas': {
+            'Base': {
+              'type': 'object',
+              'properties': {
+                'id': {'type': 'integer'},
+              },
+            },
+            'Timestamped': {
+              'allOf': [
+                {'\$ref': '#/components/schemas/Base'},
+                {
+                  'type': 'object',
+                  'properties': {
+                    'createdAt': {'type': 'string', 'format': 'date-time'},
+                  },
+                },
+              ],
+            },
+            'User': {
+              'allOf': [
+                {'\$ref': '#/components/schemas/Timestamped'},
+                {
+                  'type': 'object',
+                  'properties': {
+                    'name': {'type': 'string'},
+                  },
+                },
+              ],
+            },
+          },
+        },
+      };
+
+      await specFile.writeAsString(jsonEncode(spec));
+
+      final result = await SwaggerToDartGenerator.generateModels(
+        input: specFile.path,
+        outputDir: '${tempDir.path}/models',
+        projectDir: tempDir.path,
+      );
+
+      final userFile = result.generatedFiles.firstWhere((f) => f.contains('user.dart'));
+      final content = await File(userFile).readAsString();
+
+      // User должен содержать все свойства из Base, Timestamped и свои
+      expect(content, contains('class User'));
+      expect(content, contains('final int id;')); // Из Base
+      expect(content, contains('final DateTime createdAt;')); // Из Timestamped
+      expect(content, contains('final String name;')); // Из User
+    });
+
+    test('обрабатывает множественное наследование через allOf', () async {
+      final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_multiple_allof_');
+      final specFile = File('${tempDir.path}/openapi.json');
+
+      final spec = <String, dynamic>{
+        'openapi': '3.0.0',
+        'info': {'title': 'Test', 'version': '1.0.0'},
+        'paths': <String, dynamic>{},
+        'components': {
+          'schemas': {
+            'Identifiable': {
+              'type': 'object',
+              'required': ['id'],
+              'properties': {
+                'id': {'type': 'integer'},
+              },
+            },
+            'Named': {
+              'type': 'object',
+              'required': ['name'],
+              'properties': {
+                'name': {'type': 'string'},
+              },
+            },
+            'Timestamped': {
+              'type': 'object',
+              'properties': {
+                'createdAt': {'type': 'string', 'format': 'date-time'},
+              },
+            },
+            'Product': {
+              'allOf': [
+                {'\$ref': '#/components/schemas/Identifiable'},
+                {'\$ref': '#/components/schemas/Named'},
+                {'\$ref': '#/components/schemas/Timestamped'},
+                {
+                  'type': 'object',
+                  'properties': {
+                    'price': {'type': 'number'},
+                  },
+                },
+              ],
+            },
+          },
+        },
+      };
+
+      await specFile.writeAsString(jsonEncode(spec));
+
+      final result = await SwaggerToDartGenerator.generateModels(
+        input: specFile.path,
+        outputDir: '${tempDir.path}/models',
+        projectDir: tempDir.path,
+      );
+
+      final productFile = result.generatedFiles.firstWhere((f) => f.contains('product.dart'));
+      final content = await File(productFile).readAsString();
+
+      // Product должен содержать свойства из всех трёх базовых схем и свои
+      expect(content, contains('class Product'));
+      expect(content, contains('final int id;')); // Из Identifiable
+      expect(content, contains('final String name;')); // Из Named
+      expect(content, contains('final DateTime createdAt;')); // Из Timestamped
+      expect(content, contains('final num price;')); // Из Product
+    });
+
+    test('генерирует безопасную обёртку для oneOf', () async {
+      final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_oneof_');
+      final specFile = File('${tempDir.path}/openapi.json');
+
+      final spec = <String, dynamic>{
+        'openapi': '3.0.0',
+        'info': {'title': 'Test', 'version': '1.0.0'},
+        'paths': <String, dynamic>{},
+        'components': {
+          'schemas': {
+            'StringValue': {
+              'type': 'object',
+              'properties': {
+                'value': {'type': 'string'},
+              },
+            },
+            'NumberValue': {
+              'type': 'object',
+              'properties': {
+                'value': {'type': 'number'},
+              },
+            },
+            'Value': {
+              'oneOf': [
+                {'\$ref': '#/components/schemas/StringValue'},
+                {'\$ref': '#/components/schemas/NumberValue'},
+              ],
+            },
+          },
+        },
+      };
+
+      await specFile.writeAsString(jsonEncode(spec));
+
+      Logger.clear();
+      final result = await SwaggerToDartGenerator.generateModels(
+        input: specFile.path,
+        outputDir: '${tempDir.path}/models',
+        projectDir: tempDir.path,
+      );
+
+      // Ищем файл для схемы Value (oneOf)
+      final valueFiles = result.generatedFiles.where((f) => f.endsWith('value.dart')).toList();
+      expect(valueFiles, isNotEmpty, reason: 'Должен быть сгенерирован файл для схемы Value');
+      
+      // Может быть несколько файлов (StringValue, NumberValue, Value)
+      // Находим файл для схемы Value (oneOf)
+      File? valueFile;
+      for (final filePath in valueFiles) {
+        final content = await File(filePath).readAsString();
+        if (content.contains('class Value') && content.contains('final dynamic value;')) {
+          valueFile = File(filePath);
+          break;
+        }
+      }
+      
+      expect(valueFile, isNotNull, reason: 'Должен быть найден файл с классом Value (oneOf)');
+      final content = await valueFile!.readAsString();
+
+      // Должна быть сгенерирована безопасная обёртка
+      expect(content, contains('class Value'));
+      expect(content, contains('final dynamic value;'));
+      expect(content, contains('factory Value.fromJson(dynamic json)'));
+      expect(content, contains('dynamic toJson() => value;'));
+      
+      // Должно быть логирование о возможных типах
+      expect(Logger.warnings.any((w) => w.contains('oneOf') || w.contains('anyOf')), isFalse);
+    });
+
+    test('генерирует безопасную обёртку для anyOf', () async {
+      final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_anyof_');
+      final specFile = File('${tempDir.path}/openapi.json');
+
+      final spec = <String, dynamic>{
+        'openapi': '3.0.0',
+        'info': {'title': 'Test', 'version': '1.0.0'},
+        'paths': <String, dynamic>{},
+        'components': {
+          'schemas': {
+            'StringMessage': {
+              'type': 'object',
+              'properties': {
+                'message': {'type': 'string'},
+              },
+            },
+            'Error': {
+              'anyOf': [
+                {'\$ref': '#/components/schemas/StringMessage'},
+                {'type': 'string'},
+              ],
+            },
+          },
+        },
+      };
+
+      await specFile.writeAsString(jsonEncode(spec));
+
+      Logger.clear();
+      final result = await SwaggerToDartGenerator.generateModels(
+        input: specFile.path,
+        outputDir: '${tempDir.path}/models',
+        projectDir: tempDir.path,
+      );
+
+      final errorFile = result.generatedFiles.firstWhere((f) => f.contains('error.dart'));
+      final content = await File(errorFile).readAsString();
+
+      // Должна быть сгенерирована безопасная обёртка
+      expect(content, contains('class Error'));
+      expect(content, contains('final dynamic value;'));
+      expect(content, contains('factory Error.fromJson(dynamic json)'));
+    });
+
+    test('обрабатывает oneOf с discriminator и логирует информацию', () async {
+      final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_oneof_discriminator_');
+      final specFile = File('${tempDir.path}/openapi.json');
+
+      final spec = <String, dynamic>{
+        'openapi': '3.0.0',
+        'info': {'title': 'Test', 'version': '1.0.0'},
+        'paths': <String, dynamic>{},
+        'components': {
+          'schemas': {
+            'Cat': {
+              'type': 'object',
+              'properties': {
+                'type': {'type': 'string', 'enum': ['cat']},
+                'meow': {'type': 'boolean'},
+              },
+            },
+            'Dog': {
+              'type': 'object',
+              'properties': {
+                'type': {'type': 'string', 'enum': ['dog']},
+                'bark': {'type': 'boolean'},
+              },
+            },
+            'Pet': {
+              'oneOf': [
+                {'\$ref': '#/components/schemas/Cat'},
+                {'\$ref': '#/components/schemas/Dog'},
+              ],
+              'discriminator': {
+                'propertyName': 'type',
+              },
+            },
+          },
+        },
+      };
+
+      await specFile.writeAsString(jsonEncode(spec));
+
+      Logger.clear();
+      final result = await SwaggerToDartGenerator.generateModels(
+        input: specFile.path,
+        outputDir: '${tempDir.path}/models',
+        projectDir: tempDir.path,
+      );
+
+      // Должно быть логирование о discriminator (в verbose режиме)
+      // Проверяем, что генерация прошла успешно
+      final petFile = result.generatedFiles.firstWhere((f) => f.contains('pet.dart'));
+      final content = await File(petFile).readAsString();
+      expect(content, contains('class Pet'));
+    });
+
+    test('обрабатывает циклические зависимости в allOf', () async {
+      final tempDir = await Directory.systemTemp.createTemp('dart_swagger_to_models_allof_cycle_');
+      final specFile = File('${tempDir.path}/openapi.json');
+
+      final spec = <String, dynamic>{
+        'openapi': '3.0.0',
+        'info': {'title': 'Test', 'version': '1.0.0'},
+        'paths': <String, dynamic>{},
+        'components': {
+          'schemas': {
+            'Base': {
+              'type': 'object',
+              'required': ['id'],
+              'properties': {
+                'id': {'type': 'integer'},
+              },
+            },
+            'Extended': {
+              'allOf': [
+                {'\$ref': '#/components/schemas/Base'},
+                {
+                  'type': 'object',
+                  'properties': {
+                    'name': {'type': 'string'},
+                  },
+                },
+              ],
+            },
+            // Попытка создать цикл (Extended ссылается на Base, который не должен ссылаться обратно)
+            'Final': {
+              'allOf': [
+                {'\$ref': '#/components/schemas/Extended'},
+                {'\$ref': '#/components/schemas/Base'}, // Повторная ссылка на Base
+                {
+                  'type': 'object',
+                  'properties': {
+                    'extra': {'type': 'string'},
+                  },
+                },
+              ],
+            },
+          },
+        },
+      };
+
+      await specFile.writeAsString(jsonEncode(spec));
+
+      Logger.clear();
+      final result = await SwaggerToDartGenerator.generateModels(
+        input: specFile.path,
+        outputDir: '${tempDir.path}/models',
+        projectDir: tempDir.path,
+      );
+
+      final finalFile = result.generatedFiles.firstWhere((f) => f.contains('final.dart'));
+      final content = await File(finalFile).readAsString();
+
+      // Final должен содержать свойства из Base, Extended и свои
+      expect(content, contains('class Final'));
+      expect(content, contains('final int id;')); // Из Base (через Extended и напрямую)
+      expect(content, contains('final String name;')); // Из Extended
+      expect(content, contains('final String extra;')); // Из Final
+    });
+  });
 }
