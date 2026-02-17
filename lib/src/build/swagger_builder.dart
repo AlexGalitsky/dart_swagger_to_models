@@ -59,7 +59,7 @@ class SwaggerBuilder implements Builder {
         spec = Map<String, dynamic>.from(yaml.map((k, v) => MapEntry(k.toString(), v)));
       }
     } catch (e) {
-      log.warning('Не удалось распарсить спецификацию ${inputId.path}: $e');
+      log.warning('Failed to parse specification ${inputId.path}: $e');
       return;
     }
 
@@ -78,7 +78,7 @@ class SwaggerBuilder implements Builder {
       config = await ConfigLoader.loadConfig(configPath, projectRoot);
     } catch (e) {
       // Конфигурация не обязательна
-      log.fine('Конфигурация не найдена: $e');
+      log.fine('Configuration not found: $e');
     }
 
     // Определяем выходную директорию
@@ -116,10 +116,10 @@ class SwaggerBuilder implements Builder {
       }
 
       log.info(
-        'Сгенерировано ${result.generatedFiles.length} файлов из ${inputId.path}',
+        'Generated ${result.generatedFiles.length} files from ${inputId.path}',
       );
     } catch (e, st) {
-      log.severe('Ошибка генерации моделей из ${inputId.path}: $e');
+      log.severe('Error generating models from ${inputId.path}: $e');
       log.fine(st.toString());
     } finally {
       // Удаляем временный файл

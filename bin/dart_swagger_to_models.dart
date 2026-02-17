@@ -10,75 +10,75 @@ void main(List<String> arguments) async {
     ..addOption(
       'input',
       abbr: 'i',
-      help: 'Путь к Swagger/OpenAPI спецификации (файл или URL).',
+      help: 'Path to Swagger/OpenAPI specification (file or URL).',
       valueHelp: 'swagger.yaml',
     )
     ..addOption(
       'output-dir',
       abbr: 'o',
-      help: 'Директория для сохранения сгенерированных моделей.',
+      help: 'Directory for saving generated models.',
       valueHelp: 'lib/models',
     )
     ..addOption(
       'library-name',
       abbr: 'l',
-      help: 'Имя библиотеки (исторический параметр, в per-file режиме практически не используется).',
+      help: 'Library name (historical parameter, not used in per-file mode).',
       valueHelp: 'models',
       defaultsTo: 'models',
     )
     ..addOption(
       'style',
       abbr: 's',
-      help: 'Стиль генерации моделей: plain_dart, json_serializable или freezed.',
+      help: 'Model generation style: plain_dart, json_serializable, or freezed.',
       valueHelp: 'plain_dart',
       allowed: ['plain_dart', 'json_serializable', 'freezed'],
     )
     ..addOption(
       'project-dir',
-      help: 'Корневая директория проекта для сканирования Dart файлов (поиск существующих моделей).',
+      help: 'Project root directory for scanning Dart files (search for existing models).',
       valueHelp: '.',
       defaultsTo: '.',
     )
     ..addOption(
       'config',
       abbr: 'c',
-      help: 'Путь к конфигурационному файлу (по умолчанию ищется dart_swagger_to_models.yaml в корне проекта).',
+      help: 'Path to configuration file (default: searches for dart_swagger_to_models.yaml in project root).',
       valueHelp: 'dart_swagger_to_models.yaml',
     )
     ..addFlag(
       'format',
-      help: 'Запустить dart format для всех сгенерированных файлов.',
+      help: 'Run dart format for all generated files.',
       defaultsTo: false,
     )
     ..addFlag(
       'verbose',
       abbr: 'v',
-      help: 'Подробный вывод (включает отладочную информацию).',
+      help: 'Verbose output (includes debug information).',
       defaultsTo: false,
     )
     ..addFlag(
       'quiet',
       abbr: 'q',
-      help: 'Минимальный вывод (только ошибки и критичные сообщения).',
+      help: 'Quiet output (only errors and critical messages).',
       defaultsTo: false,
     )
     ..addFlag(
       'changed-only',
-      help: 'Инкрементальная генерация: перегенерировать только изменённые схемы.',
+      help: 'Incremental generation: regenerate only changed schemas.',
       defaultsTo: false,
     )
     ..addFlag(
       'help',
       abbr: 'h',
       negatable: false,
-      help: 'Показать справку.',
+      help: 'Show help.',
     );
 
   ArgResults argResults;
   try {
     argResults = parser.parse(arguments);
   } on FormatException catch (e) {
-    stderr.writeln('Ошибка в аргументах: ${e.message}');
+    stderr.writeln('Argument error: ${e.message}');
     stderr.writeln();
     _printUsage(parser);
     exitCode = 64; // EX_USAGE
@@ -132,7 +132,7 @@ void main(List<String> arguments) async {
   }
 
   if (input == null || input.isEmpty) {
-    stderr.writeln('Не указан --input/-i.');
+    stderr.writeln('--input/-i is not specified.');
     stderr.writeln();
     _printUsage(parser);
     exitCode = 64;
@@ -144,9 +144,9 @@ void main(List<String> arguments) async {
     Config? config;
     try {
       config = await ConfigLoader.loadConfig(configPath, projectDir);
-      Logger.verbose('Конфигурация загружена из ${configPath ?? 'dart_swagger_to_models.yaml'}');
+      Logger.verbose('Configuration loaded from ${configPath ?? 'dart_swagger_to_models.yaml'}');
     } catch (e) {
-      Logger.warning('Не удалось загрузить конфигурацию: $e');
+      Logger.warning('Failed to load configuration: $e');
       // Continue without configuration
     }
 
@@ -170,7 +170,7 @@ void main(List<String> arguments) async {
       }
     }
 
-    Logger.info('Загрузка спецификации из: $input');
+    Logger.info('Loading specification from: $input');
     final result = await SwaggerToDartGenerator.generateModels(
       input: input,
       outputDir: outputDir,
@@ -183,7 +183,7 @@ void main(List<String> arguments) async {
 
     // Format files if --format flag is specified
     if (shouldFormat) {
-      Logger.info('Форматирование сгенерированных файлов...');
+      Logger.info('Formatting generated files...');
       for (final file in result.generatedFiles) {
         try {
           final process = await Process.run(
@@ -192,12 +192,12 @@ void main(List<String> arguments) async {
             runInShell: true,
           );
           if (process.exitCode != 0) {
-            Logger.warning('Не удалось отформатировать $file');
+            Logger.warning('Failed to format $file');
           } else {
-            Logger.verbose('Отформатирован: $file');
+            Logger.verbose('Formatted: $file');
           }
         } catch (e) {
-          Logger.warning('Не удалось запустить dart format для $file: $e');
+          Logger.warning('Failed to run dart format for $file: $e');
         }
       }
     }
@@ -208,7 +208,7 @@ void main(List<String> arguments) async {
     // Print warnings if any
     if (Logger.warnings.isNotEmpty && !isQuiet) {
       stdout.writeln();
-      stdout.writeln('Предупреждения:');
+      stdout.writeln('Warnings:');
       for (final warning in Logger.warnings) {
         stdout.writeln('  ⚠️  $warning');
       }
@@ -217,16 +217,16 @@ void main(List<String> arguments) async {
     // Print errors if any
     if (Logger.errors.isNotEmpty) {
       stderr.writeln();
-      stderr.writeln('Ошибки:');
+      stderr.writeln('Errors:');
       for (final error in Logger.errors) {
         stderr.writeln('  ❌ $error');
       }
       exitCode = 1;
     } else {
-      Logger.success('Генерация завершена успешно!');
+      Logger.success('Generation completed successfully!');
     }
   } catch (e, st) {
-    Logger.error('Ошибка генерации моделей: $e');
+    Logger.error('Error generating models: $e');
     if (isVerbose) {
       stderr.writeln(st);
     }
@@ -237,23 +237,23 @@ void main(List<String> arguments) async {
 void _printSummary(GenerationResult result) {
   stdout.writeln();
   stdout.writeln('═══════════════════════════════════════');
-  stdout.writeln('           Сводка генерации');
+  stdout.writeln('        Generation Summary');
   stdout.writeln('═══════════════════════════════════════');
-  stdout.writeln('Обработано схем:        ${result.schemasProcessed}');
-  stdout.writeln('Обработано enum\'ов:     ${result.enumsProcessed}');
-  stdout.writeln('Создано файлов:         ${result.filesCreated}');
-  stdout.writeln('Обновлено файлов:       ${result.filesUpdated}');
-  stdout.writeln('Всего файлов:           ${result.generatedFiles.length}');
-  stdout.writeln('Выходная директория:    ${result.outputDirectory}');
+  stdout.writeln('Schemas processed:      ${result.schemasProcessed}');
+  stdout.writeln('Enums processed:        ${result.enumsProcessed}');
+  stdout.writeln('Files created:          ${result.filesCreated}');
+  stdout.writeln('Files updated:          ${result.filesUpdated}');
+  stdout.writeln('Total files:            ${result.generatedFiles.length}');
+  stdout.writeln('Output directory:       ${result.outputDirectory}');
   stdout.writeln('═══════════════════════════════════════');
 }
 
 void _printUsage(ArgParser parser) {
-  stdout.writeln('dart_swagger_to_models — генерация Dart-моделей из Swagger/OpenAPI');
+  stdout.writeln('dart_swagger_to_models — Generate Dart models from Swagger/OpenAPI');
   stdout.writeln();
-  stdout.writeln('Использование:');
+  stdout.writeln('Usage:');
   stdout.writeln('  dart run dart_swagger_to_models:dart_swagger_to_models --input api.yaml');
   stdout.writeln();
-  stdout.writeln('Опции:');
+  stdout.writeln('Options:');
   stdout.writeln(parser.usage);
 }

@@ -29,7 +29,7 @@ class ConfigLoader {
 
     final file = File(actualPath);
     if (!await file.exists()) {
-      throw Exception('Конфигурационный файл не найден: $actualPath');
+      throw Exception('Configuration file not found: $actualPath');
     }
 
     final content = await file.readAsString();
@@ -90,11 +90,11 @@ class ConfigLoader {
         schemaOverrides: schemaOverrides,
       );
     } catch (e) {
-      throw Exception('Ошибка парсинга конфигурационного файла: $e');
+      throw Exception('Error parsing configuration file: $e');
     }
   }
 
-  /// Парсит стиль генерации из строки.
+  /// Parses generation style from string.
   static GenerationStyle? _parseStyle(String styleStr) {
     switch (styleStr.toLowerCase()) {
       case 'plain_dart':
@@ -104,7 +104,7 @@ class ConfigLoader {
       case 'freezed':
         return GenerationStyle.freezed;
       default:
-        throw Exception('Неизвестный стиль генерации: $styleStr');
+        throw Exception('Unknown generation style: $styleStr');
     }
   }
 
@@ -204,7 +204,7 @@ class ConfigLoader {
       case 'empty-enum':
         return LintRuleId.emptyEnum;
       default:
-        throw Exception('Неизвестное lint правило: $str');
+        throw Exception('Unknown lint rule: $str');
     }
   }
 }

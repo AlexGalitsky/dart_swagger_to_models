@@ -96,7 +96,7 @@ class LintRuleConfig {
       case 'empty-enum':
         return LintRuleId.emptyEnum;
       default:
-        throw Exception('Неизвестное lint правило: $str');
+        throw Exception('Unknown lint rule: $str');
     }
   }
 
@@ -111,7 +111,7 @@ class LintRuleConfig {
       case 'error':
         return LintSeverity.error;
       default:
-        throw Exception('Неизвестный уровень серьёзности: $str (ожидается: off, warning, error)');
+        throw Exception('Unknown severity level: $str (expected: off, warning, error)');
     }
   }
 }

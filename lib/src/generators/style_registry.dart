@@ -1,56 +1,56 @@
 import 'class_generator_strategy.dart';
 
-/// Реестр кастомных стилей генерации.
+/// Registry for custom generation styles.
 /// 
-/// Позволяет регистрировать пользовательские стили генерации,
-/// которые могут быть использованы вместо встроенных стилей.
+/// Allows registering custom generation styles
+/// that can be used instead of built-in styles.
 class StyleRegistry {
   static final Map<String, ClassGeneratorStrategy Function()> _customStyles = {};
 
-  /// Регистрирует кастомный стиль генерации.
+  /// Registers a custom generation style.
   /// 
-  /// [styleName] - имя стиля (например, 'equatable', 'my_custom_style').
-  /// [factory] - функция, создающая экземпляр стратегии генерации.
+  /// [styleName] - style name (e.g., 'equatable', 'my_custom_style').
+  /// [factory] - function that creates a generation strategy instance.
   /// 
-  /// Пример:
+  /// Example:
   /// ```dart
   /// StyleRegistry.register('equatable', () => EquatableGenerator());
   /// ```
   static void register(String styleName, ClassGeneratorStrategy Function() factory) {
     if (styleName.isEmpty) {
-      throw ArgumentError('Имя стиля не может быть пустым');
+      throw ArgumentError('Style name cannot be empty');
     }
     _customStyles[styleName.toLowerCase()] = factory;
   }
 
-  /// Отменяет регистрацию кастомного стиля.
+  /// Unregisters a custom style.
   static void unregister(String styleName) {
     _customStyles.remove(styleName.toLowerCase());
   }
 
-  /// Проверяет, зарегистрирован ли стиль.
+  /// Checks if style is registered.
   static bool isRegistered(String styleName) {
     return _customStyles.containsKey(styleName.toLowerCase());
   }
 
-  /// Создаёт стратегию для кастомного стиля.
+  /// Creates strategy for custom style.
   /// 
-  /// Выбрасывает [ArgumentError], если стиль не зарегистрирован.
+  /// Throws [ArgumentError] if style is not registered.
   static ClassGeneratorStrategy createCustomStrategy(String styleName) {
     final factory = _customStyles[styleName.toLowerCase()];
     if (factory == null) {
       throw ArgumentError(
-        'Кастомный стиль "$styleName" не зарегистрирован. '
-        'Используйте StyleRegistry.register() для регистрации стиля.',
+        'Custom style "$styleName" is not registered. '
+        'Use StyleRegistry.register() to register the style.',
       );
     }
     return factory();
   }
 
-  /// Получает список всех зарегистрированных кастомных стилей.
+  /// Gets list of all registered custom styles.
   static List<String> get registeredStyles => _customStyles.keys.toList();
 
-  /// Очищает все зарегистрированные стили (в основном для тестов).
+  /// Clears all registered styles (mainly for tests).
   static void clear() {
     _customStyles.clear();
   }

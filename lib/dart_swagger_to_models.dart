@@ -149,17 +149,17 @@ class SwaggerToDartGenerator {
     bool changedOnly = false,
   }) async {
     Logger.clear();
-    Logger.verbose('Начало генерации моделей');
-    Logger.verbose('Стиль: $style');
-    Logger.verbose('Выходная директория: $outputDir');
+    Logger.verbose('Starting model generation');
+    Logger.verbose('Style: $style');
+    Logger.verbose('Output directory: $outputDir');
     if (changedOnly) {
-      Logger.verbose('Режим инкрементальной генерации: только изменённые схемы');
+      Logger.verbose('Incremental generation mode: only changed schemas');
     }
 
     final generatedFiles = <String>[];
     final outDir = Directory(outputDir);
     if (!await outDir.exists()) {
-      Logger.verbose('Создание выходной директории: $outputDir');
+      Logger.verbose('Creating output directory: $outputDir');
       await outDir.create(recursive: true);
     }
 
@@ -175,9 +175,9 @@ class SwaggerToDartGenerator {
         };
         if (cache.hasChanged(entry.key, schemaMap)) {
           schemasToProcess[entry.key] = schemaMap;
-          Logger.verbose('Схема "${entry.key}" изменилась, будет перегенерирована');
+          Logger.verbose('Schema "${entry.key}" changed, will be regenerated');
         } else {
-          Logger.verbose('Схема "${entry.key}" не изменилась, пропускаем');
+          Logger.verbose('Schema "${entry.key}" unchanged, skipping');
         }
       }
 
@@ -187,7 +187,7 @@ class SwaggerToDartGenerator {
       final deletedSchemas = cachedSchemaNames.difference(currentSchemaNames);
       
       if (deletedSchemas.isNotEmpty) {
-        Logger.verbose('Обнаружены удалённые схемы: ${deletedSchemas.join(", ")}');
+        Logger.verbose('Deleted schemas detected: ${deletedSchemas.join(", ")}');
         for (final deletedSchema in deletedSchemas) {
           cache.removeHash(deletedSchema);
           // Delete file if it exists
@@ -196,7 +196,7 @@ class SwaggerToDartGenerator {
           final file = File(filePath);
           if (await file.exists()) {
             await file.delete();
-            Logger.verbose('Удалён файл для удалённой схемы: $fileName.dart');
+            Logger.verbose('Deleted file for removed schema: $fileName.dart');
           }
         }
       }
@@ -211,12 +211,12 @@ class SwaggerToDartGenerator {
     }
 
     // Scan project for existing files with markers
-    Logger.verbose('Сканирование проекта для поиска существующих файлов...');
+    Logger.verbose('Scanning project for existing files...');
     final existingFiles = await _scanProjectForMarkers(
       projectDir,
       outputDir,
     );
-    Logger.verbose('Найдено существующих файлов: ${existingFiles.length}');
+    Logger.verbose('Found existing files: ${existingFiles.length}');
 
     // Check schemas for suspicious constructs (only for processed schemas)
     final lintConfig = config?.lint ?? LintConfig.defaultConfig();
@@ -233,7 +233,7 @@ class SwaggerToDartGenerator {
       }
     });
 
-    Logger.verbose('Найдено enum схем: ${enumSchemas.length}');
+    Logger.verbose('Found enum schemas: ${enumSchemas.length}');
 
     int filesCreated = 0;
     int filesUpdated = 0;
@@ -272,10 +272,10 @@ class SwaggerToDartGenerator {
 
         if (existingContent != null) {
           filesUpdated++;
-          Logger.verbose('Обновлён enum: $modelName');
+          Logger.verbose('Updated enum: $modelName');
         } else {
           filesCreated++;
-          Logger.verbose('Создан enum: $modelName');
+          Logger.verbose('Created enum: $modelName');
         }
 
         // Update cache
@@ -284,7 +284,7 @@ class SwaggerToDartGenerator {
           cache.setHash(entry.key, hash);
         }
       } catch (e) {
-        Logger.error('Ошибка при генерации enum "${entry.key}": $e');
+        Logger.error('Error generating enum "${entry.key}": $e');
         rethrow;
       }
     }
@@ -298,7 +298,7 @@ class SwaggerToDartGenerator {
           return !context.isEnum(schemaMap);
         })
         .length;
-    Logger.verbose('Найдено схем классов: $classSchemas');
+    Logger.verbose('Found class schemas: $classSchemas');
 
     for (final entry in schemasToProcess.entries) {
       final schemaMap = <String, dynamic>{
@@ -341,10 +341,10 @@ class SwaggerToDartGenerator {
 
           if (existingContent != null) {
             filesUpdated++;
-            Logger.verbose('Обновлён класс: $modelName');
+            Logger.verbose('Updated class: $modelName');
           } else {
             filesCreated++;
-            Logger.verbose('Создан класс: $modelName');
+            Logger.verbose('Created class: $modelName');
           }
 
           // Update cache
@@ -353,7 +353,7 @@ class SwaggerToDartGenerator {
             cache.setHash(entry.key, hash);
           }
         } catch (e) {
-          Logger.error('Ошибка при генерации класса "${entry.key}": $e');
+          Logger.error('Error generating class "${entry.key}": $e');
           rethrow;
         }
       }
@@ -373,7 +373,7 @@ class SwaggerToDartGenerator {
     // Save cache
     if (cache != null) {
       await cache.save();
-      Logger.verbose('Кэш сохранён в ${cache.cacheFilePath}');
+      Logger.verbose('Cache saved to ${cache.cacheFilePath}');
     }
 
     // Check for missing $ref after generation
@@ -955,7 +955,7 @@ class SwaggerToDartGenerator {
     SchemaOverride? override,
   }) {
     final allOf = schema['allOf'] as List;
-    Logger.verbose('Обработка allOf для схемы "$name" (${allOf.length} элементов)');
+    Logger.verbose('Processing allOf for schema "$name" (${allOf.length} items)');
 
     final allProperties = <String, dynamic>{};
     final allRequired = <String>[];
@@ -972,8 +972,8 @@ class SwaggerToDartGenerator {
         // Check for circular dependencies
         if (processedRefs.contains(ref)) {
           Logger.warning(
-            'Обнаружена циклическая зависимость для $ref в схеме "$name". '
-            'Пропускаем повторную обработку.',
+            'Circular dependency detected for $ref in schema "$name". '
+            'Skipping duplicate processing.',
           );
           return;
         }
@@ -982,8 +982,8 @@ class SwaggerToDartGenerator {
         final refSchema = context.resolveRef(ref, context: parentName ?? name);
         if (refSchema == null) {
           Logger.warning(
-            'Не удалось разрешить ссылку $ref в allOf схемы "$name". '
-            'Пропускаем этот элемент.',
+            'Failed to resolve reference $ref in allOf schema "$name". '
+            'Skipping this item.',
           );
           processedRefs.remove(ref);
           return;
@@ -992,7 +992,7 @@ class SwaggerToDartGenerator {
         // Recursively process nested allOf
         if (refSchema.containsKey('allOf')) {
           final refAllOf = refSchema['allOf'] as List;
-          Logger.verbose('Обнаружен вложенный allOf в $ref (${refAllOf.length} элементов)');
+          Logger.verbose('Nested allOf detected in $ref (${refAllOf.length} items)');
           for (final refItem in refAllOf) {
             processAllOfItem(refItem, ref.split('/').last);
           }
@@ -1015,7 +1015,7 @@ class SwaggerToDartGenerator {
         // If item itself contains allOf, process recursively
         if (item.containsKey('allOf')) {
           final nestedAllOf = item['allOf'] as List;
-          Logger.verbose('Обнаружен вложенный allOf в элементе схемы "$name" (${nestedAllOf.length} элементов)');
+          Logger.verbose('Nested allOf detected in schema item "$name" (${nestedAllOf.length} items)');
           for (final nestedItem in nestedAllOf) {
             processAllOfItem(nestedItem, parentName);
           }
@@ -1030,8 +1030,8 @@ class SwaggerToDartGenerator {
 
     if (allProperties.isEmpty) {
       Logger.warning(
-        'Схема "$name" с allOf не содержит свойств после объединения. '
-        'Будет сгенерирован пустой класс.',
+        'Schema "$name" with allOf contains no properties after merging. '
+        'An empty class will be generated.',
       );
     }
 
@@ -1102,8 +1102,8 @@ class SwaggerToDartGenerator {
     if (hasDiscriminator) {
       final propertyName = discriminator['propertyName'] as String? ?? 'type';
       Logger.verbose(
-        'Схема "$name" использует discriminator "$propertyName" для oneOf/anyOf. '
-        'В будущих версиях будет поддержка генерации union-типов.',
+        'Schema "$name" uses discriminator "$propertyName" for oneOf/anyOf. '
+        'Union type generation support will be added in future versions.',
       );
     }
 
@@ -1111,43 +1111,43 @@ class SwaggerToDartGenerator {
     if (possibleTypes.isNotEmpty) {
       final typesStr = possibleTypes.join(', ');
       Logger.verbose(
-        'Схема "$name" использует ${hasOneOf ? 'oneOf' : 'anyOf'} с возможными типами: $typesStr. '
-        'Генерируется безопасная обёртка с dynamic значением.',
+        'Schema "$name" uses ${hasOneOf ? 'oneOf' : 'anyOf'} with possible types: $typesStr. '
+        'Generating safe wrapper with dynamic value.',
       );
     } else {
       Logger.warning(
-        'Схема "$name" использует ${hasOneOf ? 'oneOf' : 'anyOf'}, но не удалось определить возможные типы. '
-        'Генерируется обёртка с dynamic значением.',
+        'Schema "$name" uses ${hasOneOf ? 'oneOf' : 'anyOf'}, but failed to determine possible types. '
+        'Generating wrapper with dynamic value.',
       );
     }
 
     // Generate safe wrapper
     final buffer = StringBuffer()
-      ..writeln('/// Класс для ${hasOneOf ? 'oneOf' : 'anyOf'} схемы "$name".')
+      ..writeln('/// Class for ${hasOneOf ? 'oneOf' : 'anyOf'} schema "$name".')
       ..writeln('///')
-      ..writeln('/// Внимание: Для ${hasOneOf ? 'oneOf' : 'anyOf'} схем генерируется обёртка с dynamic значением.')
-      ..writeln('/// В будущих версиях будет поддержка генерации union-типов.');
+      ..writeln('/// Note: For ${hasOneOf ? 'oneOf' : 'anyOf'} schemas, a wrapper with dynamic value is generated.')
+      ..writeln('/// Union type generation support will be added in future versions.');
     if (possibleTypes.isNotEmpty) {
-      buffer.writeln('/// Возможные типы: ${possibleTypes.join(', ')}.');
+      buffer.writeln('/// Possible types: ${possibleTypes.join(', ')}.');
     }
     buffer
       ..writeln('class $className {')
-      ..writeln('  /// Значение (может быть одним из возможных типов).')
+      ..writeln('  /// Value (can be one of the possible types).')
       ..writeln('  final dynamic value;')
       ..writeln()
       ..writeln('  const $className(this.value);')
       ..writeln()
-      ..writeln('  /// Создаёт экземпляр из JSON.')
+      ..writeln('  /// Creates instance from JSON.')
       ..writeln('  ///')
-      ..writeln('  /// Внимание: Для ${hasOneOf ? 'oneOf' : 'anyOf'} схем требуется ручная валидация типа.')
+      ..writeln('  /// Note: For ${hasOneOf ? 'oneOf' : 'anyOf'} schemas, manual type validation is required.')
       ..writeln('  factory $className.fromJson(dynamic json) {')
       ..writeln('    if (json == null) {')
-      ..writeln('      throw ArgumentError(\'JSON не может быть null для $className\');')
+      ..writeln('      throw ArgumentError(\'JSON cannot be null for $className\');')
       ..writeln('    }')
       ..writeln('    return $className(json);')
       ..writeln('  }')
       ..writeln()
-      ..writeln('  /// Преобразует в JSON.')
+      ..writeln('  /// Converts to JSON.')
       ..writeln('  dynamic toJson() => value;')
       ..writeln()
       ..writeln('  @override')
@@ -1458,7 +1458,7 @@ class SwaggerToDartGenerator {
                   _reportLintIssue(
                     LintRuleId.emptyObject,
                     lintConfig,
-                    'Схема "$schemaName" является пустым объектом (нет properties и additionalProperties).',
+                    'Schema "$schemaName" is an empty object (no properties and additionalProperties).',
                   );
                 }
               }
@@ -1475,8 +1475,8 @@ class SwaggerToDartGenerator {
             _reportLintIssue(
               LintRuleId.missingType,
               lintConfig,
-              'Поле "$propName" в схеме "$schemaName" не имеет типа и не является ссылкой (\$ref). '
-              'Будет сгенерирован тип dynamic.',
+              'Field "$propName" in schema "$schemaName" has no type and is not a reference (\$ref). '
+              'Type dynamic will be generated.',
             );
           }
         }
@@ -1491,9 +1491,9 @@ class SwaggerToDartGenerator {
               _reportLintIssue(
                 LintRuleId.suspiciousIdField,
                 lintConfig,
-                'Поле "$propName" в схеме "$schemaName" похоже на идентификатор, '
-                'но не помечено как required и не nullable. '
-                'Возможно, стоит добавить required: true или nullable: true.',
+                'Field "$propName" in schema "$schemaName" looks like an identifier, '
+                'but is not marked as required and not nullable. '
+                'Consider adding required: true or nullable: true.',
               );
             }
           }
@@ -1508,8 +1508,8 @@ class SwaggerToDartGenerator {
               _reportLintIssue(
                 LintRuleId.missingRefTarget,
                 lintConfig,
-                'Не найдена схема для ссылки "$propRef" в поле "$propName" схемы "$schemaName". '
-                'Проверьте, что схема определена в спецификации.',
+                'Schema not found for reference "$propRef" in field "$propName" of schema "$schemaName". '
+                'Check that the schema is defined in the specification.',
               );
             }
           }
@@ -1527,8 +1527,8 @@ class SwaggerToDartGenerator {
             _reportLintIssue(
               LintRuleId.arrayWithoutItems,
               lintConfig,
-              'Поле "$propName" в схеме "$schemaName" имеет тип array, но не содержит items. '
-              'Будет сгенерирован тип List<dynamic>.',
+              'Field "$propName" in schema "$schemaName" has type array but contains no items. '
+              'Type List<dynamic> will be generated.',
             );
           }
         }
@@ -1536,7 +1536,7 @@ class SwaggerToDartGenerator {
     });
   }
 
-  /// Проверяет enum на проблемы.
+  /// Checks enum for issues.
   static void _validateEnum(
     Map<String, dynamic> schema,
     String schemaName,
@@ -1548,13 +1548,13 @@ class SwaggerToDartGenerator {
         _reportLintIssue(
           LintRuleId.emptyEnum,
           lintConfig,
-          'Enum "$schemaName" не содержит значений.',
+          'Enum "$schemaName" contains no values.',
         );
       }
     }
   }
 
-  /// Проверяет несогласованность типов.
+  /// Checks type inconsistency.
   static void _checkTypeInconsistency(
     Map<String, dynamic> propSchema,
     String propName,
@@ -1572,28 +1572,28 @@ class SwaggerToDartGenerator {
       // Пропускаем, так как это нормальная практика
     }
 
-    // Проверка: type: integer, но format указан (обычно format используется для string)
+    // Check: type: integer, but format is specified (format is usually used for string)
     if (propType == 'integer' && format != null) {
       _reportLintIssue(
         LintRuleId.typeInconsistency,
         lintConfig,
-        'Поле "$propName" в схеме "$schemaName" имеет тип integer, но указан format "$format". '
-        'Format обычно используется только для типа string.',
+        'Field "$propName" in schema "$schemaName" has type integer but format "$format" is specified. '
+        'Format is usually used only for string type.',
       );
     }
 
-    // Проверка: type: number, но format указан (обычно format используется для string)
+    // Check: type: number, but format is specified (format is usually used for string)
     if (propType == 'number' && format != null && format != 'float' && format != 'double') {
       _reportLintIssue(
         LintRuleId.typeInconsistency,
         lintConfig,
-        'Поле "$propName" в схеме "$schemaName" имеет тип number, но указан format "$format". '
-        'Для number допустимы только format: float или double.',
+        'Field "$propName" in schema "$schemaName" has type number but format "$format" is specified. '
+        'For number only format: float or double are allowed.',
       );
     }
   }
 
-  /// Сообщает о проблеме lint с учётом уровня серьёзности.
+  /// Reports lint issue with severity level.
   static void _reportLintIssue(
     LintRuleId ruleId,
     LintConfig lintConfig,
@@ -1631,12 +1631,12 @@ class SwaggerToDartGenerator {
         final refSchema = context.resolveRef(schemaRef, context: parentName);
         if (refSchema == null && !missingRefs.contains(schemaRef)) {
           missingRefs.add(schemaRef);
-          final contextMsg = parentName != null ? ' (в схеме "$parentName")' : '';
+          final contextMsg = parentName != null ? ' (in schema "$parentName")' : '';
           _reportLintIssue(
             LintRuleId.missingRefTarget,
             lintConfig,
-            'Не найдена схема для ссылки "$schemaRef"$contextMsg. '
-            'Проверьте, что схема определена в спецификации.',
+            'Schema not found for reference "$schemaRef"$contextMsg. '
+            'Check that the schema is defined in the specification.',
           );
         }
       }

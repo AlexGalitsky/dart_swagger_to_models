@@ -1,79 +1,79 @@
 import 'dart:io';
 
-/// Уровень логирования.
+/// Logging level.
 enum LogLevel {
-  /// Минимальный вывод (только ошибки и критичные сообщения).
+  /// Minimal output (only errors and critical messages).
   quiet,
 
-  /// Обычный вывод (ошибки, предупреждения, основная информация).
+  /// Normal output (errors, warnings, main information).
   normal,
 
-  /// Подробный вывод (все сообщения, включая отладочную информацию).
+  /// Verbose output (all messages, including debug information).
   verbose,
 }
 
-/// Логгер для генератора.
+/// Logger for generator.
 class Logger {
   static LogLevel _level = LogLevel.normal;
   static final List<String> _warnings = [];
   static final List<String> _errors = [];
 
-  /// Устанавливает уровень логирования.
+  /// Sets logging level.
   static void setLevel(LogLevel level) {
     _level = level;
   }
 
-  /// Получить текущий уровень логирования.
+  /// Get current logging level.
   static LogLevel get level => _level;
 
-  /// Очистить накопленные предупреждения и ошибки.
+  /// Clear accumulated warnings and errors.
   static void clear() {
     _warnings.clear();
     _errors.clear();
   }
 
-  /// Получить список предупреждений.
+  /// Get list of warnings.
   static List<String> get warnings => List.unmodifiable(_warnings);
 
-  /// Получить список ошибок.
+  /// Get list of errors.
   static List<String> get errors => List.unmodifiable(_errors);
 
-  /// Вывести информационное сообщение (только в verbose режиме).
+  /// Output informational message (only in verbose mode).
   static void verbose(String message) {
     if (_level == LogLevel.verbose) {
       stdout.writeln('ℹ️  $message');
     }
   }
 
-  /// Вывести информационное сообщение (в normal и verbose режимах).
+  /// Output informational message (in normal and verbose modes).
   static void info(String message) {
     if (_level != LogLevel.quiet) {
       stdout.writeln(message);
     }
   }
 
-  /// Вывести предупреждение.
+  /// Output warning.
   static void warning(String message) {
     _warnings.add(message);
     if (_level != LogLevel.quiet) {
-      stderr.writeln('⚠️  Предупреждение: $message');
+      stderr.writeln('⚠️  Warning: $message');
     }
   }
 
-  /// Вывести ошибку.
+  /// Output error.
   static void error(String message) {
     _errors.add(message);
-    stderr.writeln('❌ Ошибка: $message');
+    stderr.writeln('❌ Error: $message');
   }
 
-  /// Вывести отладочное сообщение (только в verbose режиме).
+  /// Output debug message (only in verbose mode).
   static void debug(String message) {
     if (_level == LogLevel.verbose) {
       stdout.writeln('🔍 $message');
     }
   }
 
-  /// Вывести успешное сообщение.
+  /// Output success message.
   static void success(String message) {
     if (_level != LogLevel.quiet) {
       stdout.writeln('✅ $message');
