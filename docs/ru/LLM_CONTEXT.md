@@ -70,6 +70,13 @@
   - Вызывает `SwaggerToDartGenerator.generateModels` с конфигурацией.
   - Отображает сводку генерации и накопленные предупреждения/ошибки.
 
+- **Интеграция с build_runner**: `lib/src/build/swagger_builder.dart`
+  - Класс `SwaggerBuilder` реализует интерфейс `Builder` для build_runner.
+  - Автоматически обнаруживает файлы спецификаций OpenAPI/Swagger в директориях `swagger/`, `openapi/` или `api/`.
+  - Генерирует модели как часть пайплайна сборки.
+  - Поддерживает все опции конфигурации через `dart_swagger_to_models.yaml`.
+  - Примеры проектов в `example/dart_example/` и `example/flutter_example/`.
+
 - **Конфигурация**: `lib/src/config/*.dart`
   - `config.dart`: классы `Config` и `SchemaOverride`.
   - `config_loader.dart`: `ConfigLoader` для парсинга YAML конфигурационных файлов.

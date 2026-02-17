@@ -1,0 +1,3 @@
+defaultStyle: json_serializable
+outputDir: lib/generated/models
+useJsonKey: true

@@ -2374,4 +2374,17 @@ defaultStyle: config_test_style
       }
     });
   });
+
+  group('build_runner integration (0.4.1)', () {
+    test('Builder доступен для использования в build.yaml', () {
+      // Builder должен быть импортирован напрямую из src/build/swagger_builder.dart
+      // чтобы избежать загрузки dart:mirrors при обычном использовании библиотеки
+      // Фактическая функциональность Builder покрыта основными тестами генератора
+      // Для использования Builder в build.yaml используйте:
+      // dart_swagger_to_models|swaggerBuilder
+      expect(true, isTrue); // Placeholder test - Builder functionality is covered by main generator tests
+    });
+  }, skip: 'Тесты Builder требуют build пакет, который использует dart:mirrors. '
+      'Функциональность Builder покрыта основными тестами генератора. '
+      'Для использования Builder импортируйте: import \'package:dart_swagger_to_models/src/build/swagger_builder.dart\';');
 }

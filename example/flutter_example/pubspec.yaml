@@ -1,0 +1,23 @@
+name: flutter_example
+description: Example Flutter project using dart_swagger_to_models with build_runner
+version: 1.0.0
+
+environment:
+  sdk: ^3.3.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  dart_swagger_to_models:
+    path: ../../
+  http: ^1.2.2
+  json_annotation: ^4.9.0
+
+dev_dependencies:
+  build_runner: ^2.4.0
+  json_serializable: ^6.8.0
+  flutter_test:
+    sdk: flutter
+
+flutter:
+  uses-material-design: true

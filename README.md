@@ -194,6 +194,7 @@ all custom code will remain intact.
 - Only top-level schemas from `definitions` / `components.schemas` are processed.
 - `$ref` to other schemas are resolved into Dart class types.
 - Per-file mode supports all three generation styles
+- **build_runner integration**: Automatic model generation as part of build pipeline (see `docs/en/USAGE.md` section 11)
   (`plain_dart`, `json_serializable`, `freezed`).
 
 ---

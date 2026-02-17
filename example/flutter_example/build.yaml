@@ -1,0 +1,9 @@
+targets:
+  $default:
+    builders:
+      dart_swagger_to_models|swaggerBuilder:
+        enabled: true
+        generate_for:
+          - swagger/**
+          - openapi/**
+          - api/**

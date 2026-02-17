@@ -1,3 +1,42 @@
+## 0.4.1 (Unreleased)
+
+### Added
+- build_runner integration
+  - `SwaggerBuilder` class for generating models as part of build_runner pipeline
+  - Automatic detection of OpenAPI/Swagger specification files in `swagger/`, `openapi/`, or `api/` directories
+  - Configuration via `build.yaml` file
+  - Support for all generation styles (plain_dart, json_serializable, freezed)
+  - Example projects:
+    - `example/dart_example/` - Pure Dart project demonstrating build_runner integration
+    - `example/flutter_example/` - Flutter project with HTTP client integration
+  - Documentation:
+    - Added section "Integration with build_runner" to `docs/en/USAGE.md`
+    - Added section "Интеграция с build_runner" to `docs/ru/usage.md`
+  - Usage:
+    ```yaml
+    # build.yaml
+    targets:
+      $default:
+        builders:
+          dart_swagger_to_models|swaggerBuilder:
+            enabled: true
+            generate_for:
+              - swagger/**
+              - openapi/**
+              - api/**
+    ```
+    ```bash
+    # Run build_runner
+    dart run build_runner build
+    # or for Flutter
+    flutter pub run build_runner build
+    ```
+  - Features:
+    - Automatic model generation when specifications change
+    - Seamless integration with other code generators (e.g., json_serializable)
+    - Works with all configuration options (defaultStyle, outputDir, useJsonKey, etc.)
+    - Generated files are part of project structure for IDE support
+
 ## 0.3.1 (Unreleased)
 
 ### Added

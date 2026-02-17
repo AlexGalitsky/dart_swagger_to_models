@@ -18,6 +18,8 @@ export 'src/core/types.dart'
 export 'src/config/config.dart' show Config, SchemaOverride;
 export 'src/generators/class_generator_strategy.dart' show ClassGeneratorStrategy, FieldInfo;
 export 'src/generators/style_registry.dart' show StyleRegistry;
+// Builder экспортируется отдельно, чтобы избежать загрузки dart:mirrors при обычном использовании
+// Для использования Builder импортируйте: import 'package:dart_swagger_to_models/src/build/swagger_builder.dart';
 
 /// Основной фасад библиотеки.
 class SwaggerToDartGenerator {

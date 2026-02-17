@@ -183,4 +183,5 @@ extension UserExtension on User {
 
 - Схемы обрабатываются на уровне верхних сущностей (`definitions` / `components.schemas`).
 - `$ref` на другие схемы разрешаются в типы Dart-классов.
-- Режим per-file поддерживает все три стиля генерации (`plain_dart`, `json_serializable`, `freezed`).
+- Режим per-file поддерживает все три стиля генерации
+- **Интеграция с build_runner**: Автоматическая генерация моделей как часть пайплайна сборки (см. раздел 11 в `docs/ru/usage.md`) (`plain_dart`, `json_serializable`, `freezed`).
